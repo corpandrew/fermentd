@@ -36,7 +36,7 @@ flowchart LR
         WEB["fermentd-web<br/>dashboard :8080"]
         MCP["fermentd-mcp<br/>stdio + HTTP :8765 (Tailscale)"]
         DB[("SQLite<br/>fermentd.db")]
-        CADDY["Caddy<br/>HTTPS :443 (Tailscale)"]
+        CADDY["Caddy<br/>HTTPS :8443 (Tailscale)"]
         BK["nightly backup<br/>03:17, keep 14"]
     end
     PROBE["DS18B20 probe<br/>GPIO4 1-Wire"] --> CTRL

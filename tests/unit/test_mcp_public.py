@@ -14,11 +14,11 @@ from fermentd.mcp import public as pub
 from fermentd.mcp.server import build_server
 from fermentd.web.auth import LoginThrottle, hash_password
 
-ISSUER = "https://fermentd.example.ts.net:8443"
+ISSUER = "https://fermentd.example.ts.net"
 REDIRECT = "https://vertexaisearch.cloud.google.com/oauth-redirect"
 PASSWORD = "correct horse battery"
 CLIENT_SECRET = "s3cret-" + "x" * 30
-HOST = "fermentd.example.ts.net:8443"
+HOST = "fermentd.example.ts.net"
 
 
 def _verifier():
@@ -42,8 +42,8 @@ def app(world, tmp_path):  # noqa: F811
         yield client, store, settings
 
 
-def _authorize(client, challenge, password=PASSWORD, redirect=REDIRECT, state="st"):
-    params = {"response_type": "code", "client_id": "fermentd-test", "redirect_uri": redirect, "state": state,
+def _authorize(client, challenge, password=PASSWORD, redirect=REDIRECT, state="st", client_id="fermentd-test"):
+    params = {"response_type": "code", "client_id": client_id, "redirect_uri": redirect, "state": state,
               "scope": "fermentd.read", "code_challenge": challenge, "code_challenge_method": "S256"}
     page = client.get("/authorize", params=params)
     assert page.status_code == 200 and "read-only" in page.text
@@ -78,7 +78,7 @@ def test_metadata(app):
     assert client.get("/.well-known/oauth-protected-resource").json() == prm
     asm = client.get("/.well-known/oauth-authorization-server").json()
     assert asm["issuer"] == ISSUER and asm["code_challenge_methods_supported"] == ["S256"]
-    assert asm["token_endpoint"] == ISSUER + "/token" and "registration_endpoint" not in asm
+    assert asm["token_endpoint"] == ISSUER + "/token"
 
 
 def test_unauthenticated_mcp_gets_401_with_resource_metadata(app):
@@ -216,3 +216,59 @@ def test_init_client_appends_hashed_secret(tmp_path):
     with pytest.raises(SystemExit):
         pub.init_client(path)
 
+
+
+def test_metadata_advertises_registration_and_public_clients(app):
+    client, _s, _ = app
+    asm = client.get("/.well-known/oauth-authorization-server").json()
+    assert asm["registration_endpoint"] == ISSUER + "/register"
+    assert "none" in asm["token_endpoint_auth_methods_supported"]
+
+
+def test_dynamic_registration_public_client_full_flow(app):
+    client, _s, _ = app
+    reg = client.post("/register", json={"redirect_uris": [REDIRECT], "client_name": "Gemini",
+                                          "token_endpoint_auth_method": "none"})
+    assert reg.status_code == 201, reg.text
+    cid = reg.json()["client_id"]
+    assert "client_secret" not in reg.json()
+    verifier, challenge = _verifier()
+    r = _authorize(client, challenge, client_id=cid)
+    code = parse_qs(urlsplit(r.headers["location"]).query)["code"][0]
+    tok = client.post("/token", data={"grant_type": "authorization_code", "code": code, "client_id": cid,
+                                      "redirect_uri": REDIRECT, "code_verifier": verifier})
+    assert tok.status_code == 200, tok.text
+    assert _rpc(client, tok.json()["access_token"], "tools/list").status_code == 200
+    new = client.post("/token", data={"grant_type": "refresh_token", "client_id": cid,
+                                      "refresh_token": tok.json()["refresh_token"]})
+    assert new.status_code == 200
+
+
+def test_dynamic_registration_rejects_foreign_redirects(app):
+    client, _s, _ = app
+    for body in ({"redirect_uris": ["https://evil.example/cb"]}, {"redirect_uris": []}, {}, ["x"]):
+        assert client.post("/register", json=body).status_code == 400
+    cid = client.post("/register", json={"redirect_uris": [REDIRECT]}).json()["client_id"]
+    other = "https://vertexaisearch.cloud.google.com/static/oauth/oauth.html"
+    page = client.get("/authorize", params={"response_type": "code", "client_id": cid, "redirect_uri": other,
+                                            "code_challenge": "x" * 43, "code_challenge_method": "S256"})
+    assert page.status_code == 400
+
+
+def test_preregistered_client_without_secret_needs_pkce_and_wrong_secret_fails(app):
+    client, _s, _ = app
+    verifier, challenge = _verifier()
+    code = parse_qs(urlsplit(_authorize(client, challenge).headers["location"]).query)["code"][0]
+    data = {"grant_type": "authorization_code", "code": code, "client_id": "fermentd-test",
+            "redirect_uri": REDIRECT, "code_verifier": verifier}
+    assert client.post("/token", data={**data, "client_secret": "nope"}).status_code == 401
+    assert client.post("/token", data=data).status_code == 200
+
+
+def test_registration_requires_pkce_for_public_client(app):
+    client, _s, _ = app
+    cid = client.post("/register", json={"redirect_uris": [REDIRECT],
+                                         "token_endpoint_auth_method": "none"}).json()["client_id"]
+    r = client.get("/authorize", params={"response_type": "code", "client_id": cid, "redirect_uri": REDIRECT},
+                   follow_redirects=False)
+    assert r.status_code == 303 and "error=invalid_request" in r.headers["location"]

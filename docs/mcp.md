@@ -81,8 +81,12 @@ that as a separate server with a smaller attack surface:
     15 minutes.
   - `/token`: `authorization_code` with PKCE S256 (codes single-use, 5 minutes) and `refresh_token`
     (rotated on every use; reusing an old one revokes the whole chain). Access tokens last 1 hour,
-    refresh tokens 30 days. The client authenticates with `client_secret_basic` or `client_secret_post`.
-  - One pre-registered confidential client. No dynamic client registration.
+    refresh tokens 30 days. A client authenticates with `client_secret_basic` or `client_secret_post`,
+    or, as a public client (`none`, which is what Gemini uses), with PKCE alone.
+  - `/register`: dynamic client registration (RFC 7591), which Gemini uses. A registration must use
+    the allowed redirect URIs below; at most 20 per 15 minutes and 50 kept. Registering grants
+    nothing by itself: every sign-in still needs the dashboard password.
+  - One pre-registered client from `init-client`, for clients that take a client id and secret.
   - Codes and tokens are stored as sha256 hashes in `data/mcp-oauth.db`; the client secret is
     stored only as a sha256 in `secrets.yaml`.
   - Redirect URIs: Gemini's (`https://vertexaisearch.cloud.google.com/oauth-redirect` and
@@ -96,20 +100,21 @@ that as a separate server with a smaller attack surface:
 ```sh
 # 1. Create the OAuth client (prints the id and secret once; only the hash is stored).
 .venv/bin/fermentd-mcp-public init-client --secrets config/secrets.yaml
-# 2. Tell it its public URL (port 8443 leaves 443 to Caddy on the Tailscale IP).
-echo 'FERMENTD_PUBLIC_ISSUER=https://<pi>.<tailnet>.ts.net:8443' >> config/fermentd.env
+# 2. Tell it its public URL. Use port 443 (no port in the URL): Gemini rejects other ports.
+#    Funnel on 443 takes :443 on the Tailscale IP, so Caddy serves the dashboard on :8443 instead.
+echo 'FERMENTD_PUBLIC_ISSUER=https://<pi>.<tailnet>.ts.net' >> config/fermentd.env
 # 3. Install and start the unit.
 scripts/install-units.sh && sudo systemctl enable --now fermentd-mcp-public
 # 4. Publish only that port. Funnel must be allowed for the node in the tailnet policy
 #    ("nodeAttrs": [{"target": ["autogroup:member"], "attr": ["funnel"]}]) and HTTPS enabled.
-sudo tailscale funnel --bg --https=8443 http://127.0.0.1:8766
+sudo tailscale funnel --bg --https=443 http://127.0.0.1:8766
 ```
 
-In the client, use `https://<pi>.<tailnet>.ts.net:8443/mcp` as the server URL plus the client id and
-secret. Clients that ask for endpoints explicitly: authorization URL `<issuer>/authorize`, token URL
+In the client, use `https://<pi>.<tailnet>.ts.net/mcp` as the server URL. Gemini registers itself
+(leave its client id and secret empty, or paste the `init-client` ones). Clients that ask for endpoints explicitly: authorization URL `<issuer>/authorize`, token URL
 `<issuer>/token`, scope `fermentd.read`, PKCE on. If a client cannot do PKCE, set
 `mcp_public.require_pkce: false` (the client secret is still required).
 
-To turn it off: `sudo tailscale funnel --https=8443 off` and `sudo systemctl disable --now fermentd-mcp-public`.
+To turn it off: `sudo tailscale funnel --https=443 off` and `sudo systemctl disable --now fermentd-mcp-public`.
 To revoke everything, delete `data/mcp-oauth.db` and restart; to replace the client, remove the
 `mcp_public` block and run `init-client` again.

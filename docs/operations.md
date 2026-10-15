@@ -109,11 +109,12 @@ still raise `service_interrupted`. A plain `systemctl restart` without the helpe
 
 ## HTTPS dashboard (Caddy on Tailscale)
 
-The dashboard can be served at `https://fermentd.example.com` (your domain), reachable only on the tailnet:
+The dashboard can be served at `https://fermentd.example.com:8443` (your domain), reachable only on the tailnet:
 
 - A DNS A record points the name at the Pi's Tailscale IP.
-- Caddy binds only to the Tailscale IP on :443 and :80, proxies to `127.0.0.1:8080`, and redirects
-  http to https. Caddy doesn't fetch certificates itself; it reads them from `/etc/caddy/certs/`.
+- Caddy binds only to the Tailscale IP on :8443 and :80, proxies to `127.0.0.1:8080`, and redirects
+  http to https. (Port 8443 because Tailscale Funnel for the public MCP endpoint owns :443; if you
+  don't use Funnel you can use 443.) Caddy doesn't fetch certificates itself; it reads them from `/etc/caddy/certs/`.
 - The certificate is from Let's Encrypt via **acme.sh** (DNS-01, ECC), installed into
   `/etc/caddy/certs` with a Caddy reload.
 

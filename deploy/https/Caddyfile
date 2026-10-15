@@ -2,17 +2,18 @@
 # Copy to /etc/caddy/Caddyfile and replace fermentd.example.com and 100.64.0.1
 # (your Pi's Tailscale IP). The dashboard itself stays on 127.0.0.1:8080.
 # Caddy keeps the Host header and sends X-Forwarded-Proto, so the dashboard's
-# CSRF origin check sees https://fermentd.example.com.
+# CSRF origin check sees https://fermentd.example.com:8443.
+# Port 8443: Tailscale Funnel (public MCP endpoint) owns :443 on the Tailscale IP.
 {
 	auto_https disable_redirects
 	default_bind 100.64.0.1
 }
 
-https://fermentd.example.com {
+https://fermentd.example.com:8443 {
 	tls /etc/caddy/certs/fermentd.crt /etc/caddy/certs/fermentd.key
 	reverse_proxy 127.0.0.1:8080
 }
 
 http://fermentd.example.com, http://100.64.0.1 {
-	redir https://fermentd.example.com{uri} permanent
+	redir https://fermentd.example.com:8443{uri} permanent
 }

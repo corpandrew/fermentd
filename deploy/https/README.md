@@ -5,7 +5,7 @@ Replace `fermentd.example.com` with your domain and `100.64.0.1` with your Pi's 
 
 - DNS: an A record `fermentd.example.com -> 100.64.0.1`. It is a Tailscale address, so the name
   only resolves to something reachable on your tailnet.
-- Caddy (apt) on the Pi binds the Tailscale IP on :443/:80 only and proxies to 127.0.0.1:8080;
+- Caddy (apt) on the Pi binds the Tailscale IP on :8443/:80 only (Funnel owns :443) and proxies to 127.0.0.1:8080;
   :80 redirects to https. Caddy does not get certs itself; it reads
   /etc/caddy/certs/fermentd.{crt,key} (dir `<user>:caddy`, mode 2750).
 - Systemd drop-in /etc/systemd/system/caddy.service.d/tailscale.conf: After/Wants tailscaled,

@@ -1,14 +1,17 @@
 """Public, read-only MCP endpoint with a built-in OAuth 2.1 authorization server.
 
-    fermentd-mcp-public --issuer https://<pi>.<tailnet>.ts.net:8443 --host 127.0.0.1 --port 8766 \\
+    fermentd-mcp-public --issuer https://<pi>.<tailnet>.ts.net --host 127.0.0.1 --port 8766 \\
         --db data/fermentd.db --oauth-db data/mcp-oauth.db --secrets config/secrets.yaml
 
 Meant to sit behind Tailscale Funnel for cloud MCP clients (Gemini's custom connector) that cannot
 reach the tailnet. Only read tools are registered (``build_server(read_only=True)``), so nothing
 reachable here can change the Pi. Every MCP request needs an OAuth access token:
 
-* one pre-registered confidential client (``mcp_public.client_id`` + sha256 of the secret in
-  secrets.yaml; ``init-client`` generates both). No dynamic client registration.
+* one pre-registered client (``mcp_public.client_id`` + sha256 of the secret in secrets.yaml;
+  ``init-client`` generates both), plus RFC 7591 dynamic client registration at ``/register``
+  (Gemini registers itself). Registered clients may only use the allowed redirect URIs below, and
+  every sign-in still needs the dashboard password. Clients without a secret ("public" clients,
+  which is how Gemini behaves with PKCE) must use PKCE.
 * ``/authorize`` asks for the dashboard password (``web.password_hash``) on a login + consent page,
   rate limited per IP and globally.
 * ``/token``: ``authorization_code`` (PKCE S256, single-use codes) and ``refresh_token`` (rotating;
@@ -130,6 +133,9 @@ class OAuthStore:
                   client_id TEXT NOT NULL, scope TEXT NOT NULL, family TEXT NOT NULL,
                   expires_at REAL NOT NULL, revoked INTEGER NOT NULL DEFAULT 0, created_at REAL NOT NULL);
                 CREATE INDEX IF NOT EXISTS oauth_tokens_family ON oauth_tokens(family);
+                CREATE TABLE IF NOT EXISTS oauth_clients (
+                  client_id TEXT PRIMARY KEY, secret_hash TEXT, redirect_uris TEXT NOT NULL,
+                  name TEXT, created_at REAL NOT NULL);
                 """
             )
 
@@ -138,6 +144,29 @@ class OAuthStore:
         conn.row_factory = sqlite3.Row
         conn.execute("PRAGMA journal_mode=WAL")
         return conn
+
+    MAX_CLIENTS = 50
+
+    def register_client(self, redirect_uris: list[str], name: str | None, public: bool,
+                        now: float | None = None) -> tuple[str, str | None]:
+        now = now or time.time()
+        client_id = "dyn-" + _secrets.token_hex(12)
+        secret = None if public else _secrets.token_urlsafe(32)
+        with self._conn() as c:
+            c.execute("BEGIN IMMEDIATE")
+            n = c.execute("SELECT COUNT(*) FROM oauth_clients").fetchone()[0]
+            if n >= self.MAX_CLIENTS:  # keep the table bounded; drop the oldest registrations
+                c.execute("DELETE FROM oauth_clients WHERE client_id IN (SELECT client_id FROM oauth_clients "
+                          "ORDER BY created_at LIMIT ?)", (n - self.MAX_CLIENTS + 1,))
+            c.execute("INSERT INTO oauth_clients VALUES (?,?,?,?,?)",
+                      (client_id, _sha(secret) if secret else None, json.dumps(redirect_uris),
+                       (name or "")[:100], now))
+            c.execute("COMMIT")
+        return client_id, secret
+
+    def get_client(self, client_id: str):
+        with self._conn() as c:
+            return c.execute("SELECT * FROM oauth_clients WHERE client_id = ?", (client_id,)).fetchone()
 
     def new_code(self, client_id: str, redirect_uri: str, challenge: str | None, scope: str,
                  now: float | None = None) -> str:
@@ -257,8 +286,9 @@ def create_public_app(settings: PublicSettings, store: OAuthStore, mcp_app,
             "response_types_supported": ["code"],
             "grant_types_supported": ["authorization_code", "refresh_token"],
             "code_challenge_methods_supported": ["S256"],
-            "token_endpoint_auth_methods_supported": ["client_secret_basic", "client_secret_post"],
-            "scopes_supported": [SCOPE],
+            "registration_endpoint": f"{settings.issuer}/register",
+            "token_endpoint_auth_methods_supported": ["client_secret_basic", "client_secret_post", "none"],
+            "scopes_supported": [SCOPE, "offline_access"],
             "authorization_response_iss_parameter_supported": True,
         })
 
@@ -285,14 +315,27 @@ def create_public_app(settings: PublicSettings, store: OAuthStore, mcp_app,
         sep = "&" if "?" in p["redirect_uri"] else "?"
         return RedirectResponse(p["redirect_uri"] + sep + urlencode(query), status_code=303, headers=NO_STORE)
 
+    def known_client(client_id: str | None):
+        """None if unknown, else (secret_hash or None, registered redirect URIs or None)."""
+        if not client_id:
+            return None
+        if hmac.compare_digest(client_id.encode(), settings.client_id.encode()):
+            return settings.client_secret_sha256, None
+        row = store.get_client(client_id)
+        return None if row is None else (row["secret_hash"], tuple(json.loads(row["redirect_uris"])))
+
     def check_request(p: dict) -> tuple[Response | None, bool]:
         """(error response, redirect is safe). Client and redirect errors never redirect."""
-        if p.get("client_id") != settings.client_id:
+        client = known_client(p.get("client_id"))
+        if client is None:
             return _page("Unknown app", "<p>This app is not registered with fermentd.</p>", 400), False
-        if not settings.redirect_ok(p.get("redirect_uri")):
+        uri = p.get("redirect_uri")
+        if not settings.redirect_ok(uri) or (client[1] is not None and uri not in client[1]):
             return _page("Redirect not allowed", "<p>That redirect address is not allowed.</p>", 400), False
         if p.get("response_type") != "code":
             return back_to_client(p, error="unsupported_response_type"), True
+        if not p.get("code_challenge") and client[0] is None:
+            return back_to_client(p, error="invalid_request", error_description="PKCE is required"), True
         if p.get("code_challenge"):
             if p.get("code_challenge_method") != "S256":
                 return back_to_client(p, error="invalid_request",
@@ -355,10 +398,14 @@ vessels, temperatures, batches, notes and alerts. It cannot start, end or change
                 client_id, secret = unquote(cid), unquote(sec)
             except (ValueError, UnicodeDecodeError):
                 return _oauth_error("invalid_client", "bad basic auth", 401)
-        if not settings.client_ok(client_id, secret):
+        client = known_client(str(client_id) if client_id else None)
+        secret_hash = client[0] if client else None
+        if client is None or (secret and (not secret_hash or not hmac.compare_digest(
+                _sha(str(secret)).encode(), secret_hash.encode()))):
             log.warning("token request with bad client credentials from %s", _client_ip(request))
             return _oauth_error("invalid_client", "client authentication failed", 401,
                                 {"WWW-Authenticate": 'Basic realm="fermentd"'})
+        public = not secret  # no secret sent: allowed only with PKCE (checked below) or a rotating refresh
         grant = form.get("grant_type")
         if grant == "authorization_code":
             row = store.take_code(str(form.get("code") or ""))
@@ -373,6 +420,8 @@ vessels, temperatures, batches, notes and alerts. It cannot start, end or change
                     return _oauth_error("invalid_grant", "PKCE verification failed")
             elif verifier:
                 return _oauth_error("invalid_grant", "code_verifier without code_challenge")
+            elif public:
+                return _oauth_error("invalid_client", "client authentication or PKCE required", 401)
             return JSONResponse(store.issue(client_id, row["scope"], row["family"]), headers=NO_STORE)
         if grant == "refresh_token":
             out = store.rotate(str(form.get("refresh_token") or ""), client_id)
@@ -380,6 +429,36 @@ vessels, temperatures, batches, notes and alerts. It cannot start, end or change
                 return _oauth_error("invalid_grant", "refresh token invalid, expired or revoked")
             return JSONResponse(out, headers=NO_STORE)
         return _oauth_error("unsupported_grant_type", "use authorization_code or refresh_token")
+
+    async def register(request: Request) -> Response:
+        ip = _client_ip(request)
+        if global_throttle.blocked("register"):
+            return _oauth_error("invalid_request", "too many registrations; try later", 429)
+        try:
+            meta = await request.json()
+        except ValueError:
+            return _oauth_error("invalid_client_metadata", "body must be JSON")
+        if not isinstance(meta, dict):
+            return _oauth_error("invalid_client_metadata", "body must be a JSON object")
+        uris = meta.get("redirect_uris")
+        if not isinstance(uris, list) or not uris or len(uris) > 10 or \
+                not all(isinstance(u, str) and settings.redirect_ok(u) for u in uris):
+            log.warning("dynamic registration refused (redirect_uris %r) from %s", uris, ip)
+            return _oauth_error("invalid_redirect_uri", "redirect_uris must be allowed https callbacks")
+        method = meta.get("token_endpoint_auth_method") or "client_secret_basic"
+        if method not in ("none", "client_secret_basic", "client_secret_post"):
+            return _oauth_error("invalid_client_metadata", "unsupported token_endpoint_auth_method")
+        global_throttle.fail("register")  # counts registrations: at most 20 per 15 minutes
+        cid, secret = store.register_client(uris, meta.get("client_name"), public=(method == "none"))
+        log.info("registered client %s (%s) for %s from %s", cid, method, uris, ip)
+        out = {"client_id": cid, "client_id_issued_at": int(time.time()), "redirect_uris": uris,
+               "token_endpoint_auth_method": method, "grant_types": ["authorization_code", "refresh_token"],
+               "response_types": ["code"], "scope": SCOPE}
+        if meta.get("client_name"):
+            out["client_name"] = str(meta["client_name"])[:100]
+        if secret:
+            out["client_secret"], out["client_secret_expires_at"] = secret, 0
+        return JSONResponse(out, status_code=201, headers=NO_STORE)
 
     async def mcp_endpoint(scope, receive, send):
         request = Request(scope)
@@ -418,6 +497,7 @@ vessels, temperatures, batches, notes and alerts. It cannot start, end or change
         Route("/.well-known/oauth-authorization-server/mcp", as_metadata),
         Route("/authorize", authorize, methods=["GET", "POST"]),
         Route("/token", token, methods=["POST"]),
+        Route("/register", register, methods=["POST"]),
         Route("/healthz", health),
         _McpRoute(),
     ]
@@ -463,7 +543,7 @@ def init_client(secrets_path: Path) -> tuple[str, str]:
 def main(argv: list[str] | None = None) -> None:
     parser = argparse.ArgumentParser(prog="fermentd-mcp-public")
     parser.add_argument("command", nargs="?", choices=["serve", "init-client"], default="serve")
-    parser.add_argument("--issuer", help="public https base URL, e.g. https://pi.tailnet.ts.net:8443")
+    parser.add_argument("--issuer", help="public https base URL, e.g. https://pi.tailnet.ts.net")
     parser.add_argument("--host", default="127.0.0.1")
     parser.add_argument("--port", type=int, default=8766)
     parser.add_argument("--db", type=Path, default=Path("data/fermentd.db"))
