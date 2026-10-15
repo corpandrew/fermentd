@@ -19,7 +19,9 @@ rsync -az \
   ./ "$HOST:$REMOTE_DIR/"
 ssh "$HOST" "cd $REMOTE_DIR && .venv/bin/pip install -q -e . && \
   .venv/bin/fermentd-ctl --config config/fermentd.yaml planned-restart && \
-  sleep 8 && systemctl is-active fermentd-control fermentd-web fermentd-mcp"
+  sleep 8 && systemctl is-active fermentd-control fermentd-web fermentd-mcp && \
+  if systemctl is-enabled -q fermentd-mcp-public 2>/dev/null; then \
+    sudo systemctl restart fermentd-mcp-public && sleep 3 && systemctl is-active fermentd-mcp-public; fi"
 # End stdio MCP sessions on both ends; the MCP client starts a fresh one on its next call.
 ssh "$HOST" "pkill -f '$PI_STDIO_PATTERN' && echo 'ended stale stdio MCP sessions on the Pi' || echo 'no stdio MCP sessions on the Pi'"
 if pkill -f "$LOCAL_STDIO_PATTERN"; then

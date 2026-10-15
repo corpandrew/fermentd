@@ -84,6 +84,7 @@ to try ntfy or the MCP HTTP server.
 | `fermentd-control` | The control loop: probes, heater, safety, reminders, alerts, digest |
 | `fermentd-web` | Web dashboard (FastAPI), default port 8080 |
 | `fermentd-mcp` | MCP server; stdio by default, `--http --host <ip> --port 8765` for HTTP |
+| `fermentd-mcp-public` | Optional public, read-only MCP server with OAuth, for cloud clients like Gemini (behind Tailscale Funnel) |
 | `fermentd-ctl` | Helper CLI: `probes`, `heaters-off [--all]`, `plug-test <zone>`, `scale-read/tare/calibrate <vessel>`, `scale-test`, `planned-restart`, `set-password` |
 | `fermentd-demo` | Simulated batch, for trying things out |
 

@@ -30,8 +30,11 @@ def build_server(
     db_path: Path | str = DEFAULT_DB,
     conn: sqlite3.Connection | None = None,
     writer=None,
+    read_only: bool = False,
     **settings,
 ):
+    """Build the MCP server. ``read_only=True`` never registers a tool whose annotations lack
+    ``readOnlyHint: True``, so the WRITE tools do not exist on that server at all."""
     from mcp.server.fastmcp import FastMCP
 
     from fermentd.mcp import writes as w
@@ -58,6 +61,20 @@ def build_server(
         ),
         **settings,
     )
+    if read_only:
+        mcp._mcp_server.instructions = (
+            "Read-only view of Andrew's fermentation controller: vessels, batches, temperatures, heat mat, "
+            "scale weight, hydrometer readings, notes, tastings and alerts. Temperatures are °F. Times are "
+            "given in UTC and America/New_York. Every tool is read-only; nothing here can change the Pi."
+        )
+        _register = mcp.tool
+
+        def _read_only_tool(*args, annotations=None, **kwargs):
+            if not (annotations or {}).get("readOnlyHint", False):
+                return lambda fn: fn  # WRITE tool: not registered on the read-only server
+            return _register(*args, annotations=annotations, **kwargs)
+
+        mcp.tool = _read_only_tool
     ro = {"readOnlyHint": True, "destructiveHint": False, "idempotentHint": True, "openWorldHint": False}
 
     @mcp.tool(annotations=ro)

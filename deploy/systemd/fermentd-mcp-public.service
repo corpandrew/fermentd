@@ -1,0 +1,26 @@
+# Template: render with scripts/install-units.sh. Optional: the public, read-only MCP endpoint with
+# OAuth, for cloud MCP clients such as Gemini (see docs/mcp.md, "Public read-only endpoint").
+# Needs FERMENTD_PUBLIC_ISSUER (your Funnel URL, e.g. https://pi.tailnet.ts.net:8443) in
+# config/fermentd.env and an mcp_public block in secrets.yaml (fermentd-mcp-public init-client).
+# Listens on 127.0.0.1 only; Tailscale Funnel is what makes it public. Not enabled by default:
+#   sudo systemctl enable --now fermentd-mcp-public
+[Unit]
+Description=fermentd public read-only MCP server (OAuth, behind Tailscale Funnel)
+After=fermentd-control.service tailscaled.service
+
+[Service]
+User=@USER@
+WorkingDirectory=@APP_DIR@
+Environment=FERMENTD_PUBLIC_PORT=8766
+EnvironmentFile=-@APP_DIR@/config/fermentd.env
+ExecStart=@APP_DIR@/.venv/bin/fermentd-mcp-public serve --issuer ${FERMENTD_PUBLIC_ISSUER} --host 127.0.0.1 --port ${FERMENTD_PUBLIC_PORT} --db @APP_DIR@/data/fermentd.db --oauth-db @APP_DIR@/data/mcp-oauth.db --secrets @APP_DIR@/config/secrets.yaml
+Restart=always
+RestartSec=10
+NoNewPrivileges=yes
+PrivateTmp=yes
+ProtectSystem=strict
+ProtectHome=read-only
+ReadWritePaths=@APP_DIR@/data
+
+[Install]
+WantedBy=multi-user.target

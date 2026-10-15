@@ -18,6 +18,12 @@ surfaces, not just status pages.
   add it to `web.allowed_origins`.
 - **MCP over HTTP** needs a bearer token (`mcp.token`, 24+ characters) and should listen only on a
   Tailscale address.
+- **The public MCP endpoint is optional and read-only.** `fermentd-mcp-public` (behind Tailscale
+  Funnel) registers no write tools, listens on 127.0.0.1 only, and needs an OAuth access token
+  obtained by logging in with the dashboard password (rate limited, PKCE, rotating refresh tokens,
+  one pre-registered client, redirect allowlist). Anyone on the internet can reach its login page,
+  so use a strong dashboard password. Don't publish the dashboard or port 8765 with Funnel. See
+  [docs/mcp.md](docs/mcp.md#public-read-only-endpoint-oauth).
 - **Secrets stay local.** `config/fermentd.yaml`, `config/secrets.yaml` (mode 600),
   `config/fermentd.env`, Tuya `devices.json`/`snapshot.json`, keys and certificates are gitignored.
   The ntfy topic name is a secret: anyone who knows it can read and send your alerts.

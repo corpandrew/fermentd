@@ -329,11 +329,21 @@ class WebSecret(_Strict):
         return self
 
 
+class McpPublicSecret(_Strict):
+    # Pre-registered OAuth client for the public read-only MCP endpoint (fermentd-mcp-public).
+    client_id: str = Field(min_length=8)
+    client_secret_sha256: str = Field(pattern=r"^[0-9a-f]{64}$", repr=False)
+    # Extra exact redirect URIs to allow besides Gemini's and other google.com ones.
+    redirect_uris: list[str] = Field(default_factory=list)
+    require_pkce: bool = True
+
+
 class Secrets(_Strict):
     web: WebSecret | None = None
     tuya: dict[str, TuyaSecret] = Field(default_factory=dict)
     ntfy: NtfySecret | None = None
     mcp: McpSecret | None = None
+    mcp_public: McpPublicSecret | None = None
 
 
 def load_config(path: Path) -> FermentdConfig:

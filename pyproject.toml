@@ -25,6 +25,7 @@ fermentd-web = "fermentd.web.app:main"
 fermentd-ctl = "fermentd.cli:main"
 fermentd-demo = "fermentd.demo:main"
 fermentd-mcp = "fermentd.mcp.server:main"
+fermentd-mcp-public = "fermentd.mcp.public:main"
 
 [build-system]
 requires = ["setuptools>=68"]

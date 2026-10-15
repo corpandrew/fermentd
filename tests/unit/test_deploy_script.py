@@ -52,6 +52,6 @@ def test_install_units_renders_one_home_layout_with_no_placeholders_left():
     out = subprocess.run(["bash", "scripts/install-units.sh"], env=env, capture_output=True, text=True, check=True)
     text = out.stdout
     assert "@USER@" not in text and "@APP_DIR@" not in text and "/opt/fermentd" not in text
-    assert text.count("User=pi") == 4
+    assert text.count("User=pi") == 5
     assert "ExecStart=/home/pi/fermentd/.venv/bin/fermentd-web --config /home/pi/fermentd/config/fermentd.yaml" in text
     assert "EnvironmentFile=-/home/pi/fermentd/config/fermentd.env" in text

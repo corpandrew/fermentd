@@ -8,7 +8,8 @@ cd "$(dirname "$0")/.."
 USER_NAME="${FERMENTD_USER:-$(id -un)}"
 APP_DIR="${FERMENTD_DIR:-$(pwd)}"
 UNITS=(deploy/systemd/fermentd-control.service deploy/systemd/fermentd-web.service
-       deploy/systemd/fermentd-mcp.service deploy/backup/fermentd-backup.service
+       deploy/systemd/fermentd-mcp.service deploy/systemd/fermentd-mcp-public.service
+       deploy/backup/fermentd-backup.service
        deploy/backup/fermentd-backup.timer)
 render() { sed -e "s|@USER@|$USER_NAME|g" -e "s|@APP_DIR@|$APP_DIR|g" "$1"; }
 for unit in "${UNITS[@]}"; do
@@ -21,4 +22,5 @@ done
 [ -n "${DRY_RUN:-}" ] && exit 0
 sudo systemctl daemon-reload
 sudo systemctl enable fermentd-control fermentd-web fermentd-mcp fermentd-backup.timer
+# fermentd-mcp-public is optional; enable it yourself: sudo systemctl enable --now fermentd-mcp-public
 echo "installed units for $USER_NAME at $APP_DIR; restart with: .venv/bin/fermentd-ctl --config config/fermentd.yaml planned-restart"
