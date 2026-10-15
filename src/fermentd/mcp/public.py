@@ -252,12 +252,20 @@ def _oauth_error(error: str, description: str, status: int = 400, headers: dict 
                         headers={**NO_STORE, **(headers or {})})
 
 
-def _page(title: str, body: str, status: int = 200) -> HTMLResponse:
+def _page(title: str, body: str, status: int = 200, form_target: str | None = None) -> HTMLResponse:
     doc = f"""<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width">
 <title>{html.escape(title)}</title><style>body{{font-family:system-ui,sans-serif;max-width:26rem;margin:3rem auto;
 padding:0 1rem;line-height:1.45}}input,button{{font-size:1rem;padding:.5rem;width:100%;box-sizing:border-box;
 margin:.3rem 0}}.err{{color:#b00}}</style></head><body><h1>{html.escape(title)}</h1>{body}</body></html>"""
-    return HTMLResponse(doc, status_code=status, headers=PAGE_HEADERS)
+    headers = dict(PAGE_HEADERS)
+    if form_target:
+        # Browsers apply form-action to the redirect that follows the POST too, so the client's
+        # (already allowlisted) redirect origin must be listed or "Allow" goes nowhere.
+        parts = urlsplit(form_target)
+        origin = f"{parts.scheme}://{parts.netloc}"
+        headers["Content-Security-Policy"] = headers["Content-Security-Policy"].replace(
+            "form-action 'self'", f"form-action 'self' {origin}")
+    return HTMLResponse(doc, status_code=status, headers=headers)
 
 
 AUTH_PARAMS = ("response_type", "client_id", "redirect_uri", "state", "scope", "code_challenge",
@@ -356,7 +364,7 @@ vessels, temperatures, batches, notes and alerts. It cannot start, end or change
 <label>Dashboard password<input type="password" name="password" autocomplete="current-password" autofocus></label>
 <button name="action" value="allow">Allow read-only access</button>
 <button name="action" value="deny">Deny</button></form>"""
-        return _page("Connect to fermentd", body, status)
+        return _page("Connect to fermentd", body, status, form_target=p["redirect_uri"])
 
     async def authorize(request: Request) -> Response:
         if request.method == "GET":

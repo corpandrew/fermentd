@@ -48,6 +48,8 @@ def _authorize(client, challenge, password=PASSWORD, redirect=REDIRECT, state="s
     page = client.get("/authorize", params=params)
     assert page.status_code == 200 and "read-only" in page.text
     assert page.headers["x-frame-options"] == "DENY"
+    origin = "https://" + urlsplit(redirect).netloc
+    assert f"form-action 'self' {origin};" in page.headers["content-security-policy"]
     txn = page.text.split('name="txn" value="')[1].split('"')[0]
     return client.post("/authorize", data={"txn": txn.replace("&quot;", '"'), "password": password,
                                            "action": "allow"}, follow_redirects=False)
