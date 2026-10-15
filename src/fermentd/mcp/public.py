@@ -248,6 +248,7 @@ def _client_ip(request: Request) -> str:
 
 
 def _oauth_error(error: str, description: str, status: int = 400, headers: dict | None = None) -> JSONResponse:
+    log.warning("OAuth error response %s %s: %s", status, error, description)
     return JSONResponse({"error": error, "error_description": description}, status_code=status,
                         headers={**NO_STORE, **(headers or {})})
 
@@ -406,21 +407,40 @@ vessels, temperatures, batches, notes and alerts. It cannot start, end or change
 
     async def token(request: Request) -> Response:
         form = await request.form()
-        client_id, secret = form.get("client_id"), form.get("client_secret")
+        # Collect every credential the client sent (Basic header and/or form fields) and accept the
+        # first pair that validates; some clients send both, or encode Basic differently.
+        cands: list[tuple[str | None, str | None, str]] = []
         header = request.headers.get("authorization", "")
         if header.lower().startswith("basic "):
+            from urllib.parse import unquote_plus
             try:
-                raw = base64.b64decode(header[6:].strip()).decode()
-                from urllib.parse import unquote
-                cid, _, sec = raw.partition(":")
-                client_id, secret = unquote(cid), unquote(sec)
+                raw = base64.b64decode(header[6:].strip() + "==").decode()
             except (ValueError, UnicodeDecodeError):
-                return _oauth_error("invalid_client", "bad basic auth", 401)
-        client = known_client(str(client_id) if client_id else None)
-        secret_hash = client[0] if client else None
-        if client is None or (secret and (not secret_hash or not hmac.compare_digest(
-                _sha(str(secret)).encode(), secret_hash.encode()))):
-            log.warning("token request with bad client credentials from %s", _client_ip(request))
+                raw = ""
+            cid, _, sec = raw.partition(":")
+            cands += [(cid, sec, "basic"), (unquote_plus(cid), unquote_plus(sec), "basic-decoded")]
+        f_id, f_sec = form.get("client_id"), form.get("client_secret")
+        cands.append((str(f_id) if f_id else None, str(f_sec) if f_sec else None, "post"))
+        client_id = secret = None
+        client = None
+        for cid, sec, how in cands:
+            c = known_client(cid or None)
+            if c is None:
+                continue
+            if not sec:
+                if client is None:
+                    client_id, secret, client = cid, None, c
+                continue
+            if c[0] and hmac.compare_digest(_sha(sec).encode(), c[0].encode()):
+                client_id, secret, client = cid, sec, c
+                break
+        else:
+            if any(sec for _c, sec, _h in cands):  # a secret was sent and none matched
+                client = None
+        if client is None:
+            log.warning("token request with bad client credentials from %s: %s", _client_ip(request), "; ".join(
+                f"{how}: id={'known' if known_client(cid or None) else repr((cid or '')[:40])} "
+                f"secret_len={len(sec or '')}" for cid, sec, how in cands))
             return _oauth_error("invalid_client", "client authentication failed", 401,
                                 {"WWW-Authenticate": 'Basic realm="fermentd"'})
         public = not secret  # no secret sent: allowed only with PKCE (checked below) or a rotating refresh
