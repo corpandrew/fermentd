@@ -1,0 +1,69 @@
+id: ginger_beer_quick
+name: Ginger beer, quick (about 4%)
+extends: null
+status: supported
+requires_capability:
+- heat
+tracking_mode: timer
+category: ginger_beer
+vessel_types:
+- jug
+recipe: docs/recipes/ginger_beer_quick.md
+default_stage: primary
+temperature:
+  default_target_f: 70
+  recommended_f:
+  - 68
+  - 72
+  allowed_target_f:
+  - 66
+  - 75
+  default_hysteresis_f: 1.0
+done_rule:
+  type: timer
+stages:
+- id: primary
+  core: primary
+  tracking: timer
+- id: bottle
+  core: packaging
+- id: bottle_condition
+  core: conditioning
+  tracking: timer
+  target_f: 70
+- id: cellared
+  core: done
+reminders:
+- id: airlock
+  at: stage:primary+1d
+  text: Check that the airlock is bubbling.
+- id: gravity
+  at: stage:primary+5d
+  repeat: 2d
+  text: Take a hydrometer reading. Bottle only when it is 1.000 or lower and the same on 3 readings over 3 days.
+- id: tester
+  at: stage:bottle_condition+5d
+  repeat: 2d
+  text: Squeeze the plastic tester bottle. Conditioning is done when it is rock hard.
+- id: condition_done
+  at: stage:bottle_condition+10d
+  repeat: 2d
+  text: If the tester is rock hard, move all bottles to the fridge. Do not leave carbonated glass warm.
+guidance:
+  headspace: Fill the jug to the shoulder. Leave 1 inch of headspace in bottles.
+  blowoff: Use the airlock from day 0.
+  sampling: Pull samples with a sanitized wine thief. Squeeze the plastic tester instead of opening glass.
+  safety_glass: Prime only fully fermented ginger beer, with the same gravity (1.000 or lower) on 3 readings over 3 days.
+  safety_pitch: Pitch below 80 F.
+  note: These like warmth. The heat mat holds the target even in a cold winter room, so they work well all year. fermentd caps every target at 75 F.
+alerts:
+  pressure_risk_margin_f: 6
+  warm_action_f: 78
+  over_target_margin_f: 4
+safety:
+  cutoff_f: 80
+carbonation:
+  default: sparkling
+  target_vol: 2.7
+  max_vol: 3.0
+  method: priming

@@ -1,0 +1,78 @@
+id: wine_concord
+name: Concord grape wine
+extends: null
+status: supported
+requires_capability:
+- heat
+tracking_mode: timer
+category: wine
+vessel_types:
+- jug
+recipe: docs/recipes/wine_concord.md
+default_stage: primary
+temperature:
+  default_target_f: 66
+  recommended_f:
+  - 64
+  - 72
+  allowed_target_f:
+  - 60
+  - 74
+  default_hysteresis_f: 1.0
+done_rule:
+  type: timer
+stages:
+- id: primary
+  core: primary
+  tracking: timer
+- id: secondary
+  core: secondary
+  tracking: timer
+- id: aging
+  core: conditioning
+  optional: true
+- id: bottle
+  core: packaging
+- id: cellared
+  core: done
+reminders:
+- id: airlock
+  at: stage:primary+2d
+  text: Check that the airlock is bubbling. Concord foams; wipe and re-sanitize the airlock if foam reaches it.
+- id: gravity
+  at: stage:primary+10d
+  repeat: 3d
+  text: Take a gravity reading. Rack once it is 1.000 or lower.
+- id: dry_check
+  at: stage:secondary+14d
+  repeat: 7d
+  text: Check gravity and clarity. Move on to aging once it is 0.998 or lower and the same on 3 readings over 3 days.
+- id: rack
+  at: stage:aging+30d
+  repeat: 45d
+  text: Rack off any new sediment into a clean jug, add 1/4 crushed Campden tablet per gallon every other racking, and top up to the neck.
+- id: bottle_ready
+  at: stage:aging+60d
+  repeat: 30d
+  text: Bottle when clear. To make it semi-sweet, stabilize with sorbate and Campden first, wait 24 hours, then sweeten to taste.
+- id: cellar
+  at: stage:cellared+60d
+  text: Try a bottle. Concord wine softens a lot after 3-6 months.
+guidance:
+  headspace: During the first week leave room for foam. From secondary on, keep the jug topped up into the neck to limit air contact.
+  blowoff: Use the airlock (or a cloth-covered bucket lid with airlock) from day 0.
+  sampling: Pull samples with a sanitized wine thief or the auto-siphon.
+  safety_glass: This is a still wine. Bottle only when fully dry and stable for 3 readings over 3 days, and never add sugar at bottling without potassium sorbate and Campden first.
+  safety_pitch: Pitch below 80 F, at least 12 hours after adding Campden.
+  note: Heat-only rig. It holds a floor of 66 F, so in winter the mat keeps the yeast happy in a cool room.
+alerts:
+  pressure_risk_margin_f: 6
+  warm_action_f: 76
+  over_target_margin_f: 6
+safety:
+  cutoff_f: 78
+carbonation:
+  default: still
+  target_vol: 0.0
+  max_vol: 3.0
+  method: none

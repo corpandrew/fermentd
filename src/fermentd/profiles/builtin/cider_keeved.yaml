@@ -1,0 +1,77 @@
+id: cider_keeved
+name: Keeved French cider (cidre bouché style)
+extends: null
+status: supported
+requires_capability:
+- heat
+tracking_mode: timer
+category: keeved_cider
+vessel_types:
+- jug
+recipe: docs/recipes/cider_keeved.md
+default_stage: keeve
+temperature:
+  default_target_f: 50
+  recommended_f:
+  - 50
+  - 54
+  allowed_target_f:
+  - 50
+  - 56
+  default_hysteresis_f: 1.0
+done_rule:
+  type: timer
+stages:
+- id: keeve
+  core: prep
+  target_f: 50
+- id: slow_ferment
+  core: primary
+  tracking: timer
+  target_f: 50
+- id: bottle
+  core: packaging
+- id: in_bottle
+  core: conditioning
+  tracking: timer
+  target_f: 52
+- id: refrigerated
+  core: done
+reminders:
+- id: calcium
+  at: stage:keeve+1d
+  text: Add the dissolved calcium chloride now, 24 hours after the enzyme. Stir gently once, then don't disturb the jug.
+- id: cap_check
+  at: stage:keeve+3d
+  text: Look for the brown cap (chapeau brun) on top and clear juice below. Don't move the jug. Rack when the cap is firm and the middle is clear.
+  repeat: 1d
+- id: gravity
+  at: stage:slow_ferment+14d
+  text: Take a gravity reading. Rack off heavy sediment. Bottle at 1.020-1.025 once it is falling slowly (no more than 0.002 a week).
+  repeat: 7d
+- id: tester
+  at: stage:in_bottle+7d
+  text: Squeeze the plastic tester. Refrigerate every bottle as soon as it is firm.
+  repeat: 2d
+- id: fridge
+  at: stage:in_bottle+21d
+  text: If any bottle is still out of the fridge, refrigerate them all now. Keeved cider keeps fermenting and can over-pressurize.
+  repeat: 3d
+guidance:
+  headspace: Fill the jug to the shoulder. Leave about 1.5 inches in Champagne bottles.
+  blowoff: Airlock from day 0. The cap rises during the keeve; leave room above it.
+  sampling: Pull samples gently with a wine thief from the clear middle. Don't stir the cap or sediment.
+  safety_glass: Keeved cider is bottled while still fermenting. Use only Champagne bottles, bottle no lower than 1.020, keep a plastic tester, and refrigerate as soon as it is firm.
+  safety_pitch: Keep juice below 55 F during the keeve; warm juice ferments before the cap forms.
+  note: Keeving needs 40-55 F. The rig is heat-only (75 F cap) and holds a 50 F floor, so this only works in a cold room in late autumn or winter; it cannot cool a warm room.
+alerts:
+  pressure_risk_margin_f: 4
+  warm_action_f: 60
+  over_target_margin_f: 4
+safety:
+  cutoff_f: 75
+carbonation:
+  default: sparkling
+  target_vol: 2.5
+  max_vol: 3.0
+  method: natural_residual

@@ -1,0 +1,29 @@
+<div class="guide-layout">
+  <nav class="guide-toc card" aria-label="Guide sections">
+    <p class="section-title">On this page</p>
+    <ol>{% for item in guide.toc %}<li><a href="#{{ item.id }}">{{ item.title }}</a></li>{% endfor %}</ol>
+    <button type="button" class="ghost sm" data-reset-steps>Clear checkmarks</button>
+  </nav>
+  <article class="card guide" data-guide="{{ profile.id }}" data-category="{{ guide.category }}">
+    <p class="muted small" style="margin: 0 0 0.6rem">{{ guide.category_label }}</p>
+    {% set stages = (profile.definition.stages if profile.definition is defined else []) %}
+    {% if stages %}
+    <ol class="rail" aria-label="Stages" style="margin-bottom: 1rem">{% for st in stages %}<li data-state="next">{{ stage_label(st.id) }}{% if st.optional %} (optional){% endif %}{% if st.target_f %} · {{ st.target_f | round | int }}°F{% endif %}</li>{% endfor %}</ol>
+    {% endif %}
+    {% if guide.tiles %}
+    <div class="tiles" style="margin-bottom: 1.25rem">
+      {% for t in guide.tiles %}<div class="tile"><p class="k">{{ t.k }}</p><p class="v">{{ t.v }}</p></div>{% endfor %}
+    </div>
+    {% endif %}
+    {% if guide.hops %}
+    <section class="hop-schedule" style="margin-bottom: 1.25rem">
+      <p class="section-title">Hop schedule</p>
+      <table class="kv-table" style="width: 100%; border-collapse: collapse">
+        <thead><tr><th style="text-align: left">When</th><th style="text-align: left">Hop</th><th style="text-align: right">Amount</th></tr></thead>
+        <tbody>{% for h in guide.hops %}<tr><td>{{ h.when }}</td><td>{{ h.hop }}</td><td style="text-align: right">{{ h.amount }}</td></tr>{% endfor %}</tbody>
+      </table>
+    </section>
+    {% endif %}
+    {{ guide.html | safe }}
+  </article>
+</div>

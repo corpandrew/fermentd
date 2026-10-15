@@ -1,0 +1,16 @@
+<form method="post" action="/vessels" class="stack">
+  <label class="field"><span>Name</span><input name="name" required autocomplete="off" placeholder="e.g. Second jug"></label>
+  <div class="form-row">
+    <label class="field"><span>Type</span><select name="vessel_type">{% for t in vessel_types %}<option value="{{ t }}">{{ t.replace('_', ' ') | capitalize }}</option>{% endfor %}</select></label>
+    <label class="field"><span>Zone</span><select name="temp_zone">{% for z in zones %}<option value="{{ z.id }}">{{ z.name }}</option>{% endfor %}<option value="">None</option></select></label>
+  </div>
+  <div class="form-row">
+    <label class="field"><span>Probe ROM id <span class="hint">optional</span></span><input name="probe_rom_id" placeholder="28-..."></label>
+  </div>
+  <input type="hidden" name="confirm" value="yes">
+  <input type="hidden" name="idempotency_key" value="add-vessel-{{ token }}">
+  <div class="dialog-actions">
+    <button type="button" class="secondary" data-close>Cancel</button>
+    <button type="submit">Add vessel</button>
+  </div>
+</form>

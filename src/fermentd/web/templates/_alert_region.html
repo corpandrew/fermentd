@@ -1,0 +1,7 @@
+{% set ns = namespace(ids=[]) %}
+{% for alert in alerts if alert.status == 'open' or not alert.reminder %}
+  {% set ns.ids = ns.ids + [alert.id|string] %}
+{% endfor %}
+<div data-alerts data-ids="{{ ns.ids|join(',') }}">
+  {% include "_alerts.html" %}
+</div>

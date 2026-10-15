@@ -1,0 +1,27 @@
+{% extends "base.html" %}
+{% block body %}
+<div class="page-head">
+  <div><h2>History</h2><p>Finished batches, newest first.</p></div>
+</div>
+<div class="table-wrap">
+  {% if batches %}
+  <table class="data">
+    <thead><tr><th>Batch</th><th>Profile</th><th class="hide-sm">Started</th><th>Ended</th><th>Duration</th><th class="hide-sm">Final stage</th></tr></thead>
+    <tbody>
+      {% for batch in batches %}
+      <tr>
+        <td><a class="rowlink" href="/history/{{ batch.id }}">{{ batch.name }}</a><div class="muted small">{{ batch.vessel_name }}</div></td>
+        <td>{{ batch.profile_name }}</td>
+        <td class="hide-sm num">{{ batch.started_label }}</td>
+        <td class="num">{{ batch.ended_label }}</td>
+        <td class="num">{{ batch.duration_label }}</td>
+        <td class="hide-sm"><span class="badge plain">{{ batch.stage_label }}</span></td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  {% else %}
+  <p class="empty">No finished batches yet. End a batch from its vessel page and it will show up here.</p>
+  {% endif %}
+</div>
+{% endblock %}

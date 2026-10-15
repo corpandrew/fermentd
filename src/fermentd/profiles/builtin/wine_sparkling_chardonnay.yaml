@@ -1,0 +1,98 @@
+id: wine_sparkling_chardonnay
+name: Sparkling Chardonnay (méthode classique)
+extends: null
+status: supported
+requires_capability:
+- heat
+tracking_mode: timer
+category: sparkling_wine
+vessel_types:
+- jug
+recipe: docs/recipes/wine_sparkling_chardonnay.md
+default_stage: primary
+temperature:
+  default_target_f: 60
+  recommended_f:
+  - 58
+  - 62
+  allowed_target_f:
+  - 55
+  - 66
+  default_hysteresis_f: 1.0
+done_rule:
+  type: timer
+stages:
+- id: primary
+  core: primary
+  tracking: timer
+  target_f: 60
+- id: secondary
+  core: secondary
+  tracking: timer
+  target_f: 62
+- id: cold_stabilize
+  core: secondary
+- id: tirage
+  core: packaging
+- id: in_bottle
+  core: conditioning
+  tracking: timer
+  target_f: 58
+- id: en_tirage
+  core: conditioning
+  target_f: 55
+- id: riddling
+  core: conditioning
+- id: disgorge
+  core: packaging
+- id: cellared
+  core: done
+reminders:
+- id: airlock
+  at: stage:primary+2d
+  text: Check for airlock activity and a fresh, fruity smell.
+- id: gravity
+  at: stage:primary+14d
+  text: Take a gravity reading. Rack once it is 0.996 or lower and the same on 3 readings over 3 days.
+  repeat: 3d
+- id: dry
+  at: stage:secondary+14d
+  text: Check gravity and clarity. Move the jug to the fridge to cold stabilize once it is dry and fairly clear.
+  repeat: 7d
+- id: cold_done
+  at: stage:cold_stabilize+21d
+  text: Cold stabilizing is done after 2-3 weeks. Rack off any crystals, let it warm to 60-65 F, then make the tirage.
+- id: tirage_check
+  at: stage:in_bottle+28d
+  text: Check the plastic tester. When it is rock hard and the deposit has settled, move the bottles to cellar aging.
+  repeat: 7d
+- id: tirage_taste
+  at: stage:en_tirage+90d
+  text: Minimum time en tirage reached. For finer bubbles and toasty flavor keep going to 9-15 months.
+  repeat: 60d
+- id: riddle
+  at: stage:riddling+1d
+  text: 'Riddle: give every bottle a sharp 1/8 turn and tilt it slightly more neck-down. Wear safety glasses.'
+  repeat: 1d
+- id: riddle_done
+  at: stage:riddling+21d
+  text: Check that the deposit is a tight plug in the neck. When it is, chill the bottles to 40 F for disgorging.
+  repeat: 3d
+guidance:
+  headspace: Fill the jug to the shoulder. Fill Champagne bottles to about 1.5 inches below the rim, leaving room for the bidule.
+  blowoff: Airlock from day 0. A gallon of juice rarely foams over at 60 F.
+  sampling: Pull samples with a sanitized wine thief. Never open tirage bottles to check them; squeeze the plastic tester.
+  safety_glass: Tirage bottles reach about 6 atmospheres (90 psi). Use only heavy Champagne bottles with 29 mm crowns, never 12 oz beer bottles, and wear safety glasses.
+  safety_pitch: Pitch below 70 F; this wine wants a cool 58-62 F primary.
+  note: The rig is heat-only and caps every target at 75 F. It can hold a floor but cannot cool, so put the cooler in the coolest spot you have. Cold stabilizing happens in the fridge, off the rig; long aging en tirage wants a cellar at 50-60 F.
+alerts:
+  pressure_risk_margin_f: 4
+  warm_action_f: 68
+  over_target_margin_f: 3
+safety:
+  cutoff_f: 75
+carbonation:
+  default: sparkling
+  target_vol: 0.0
+  max_vol: 3.0
+  method: tirage_off_rig

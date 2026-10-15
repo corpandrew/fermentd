@@ -1,0 +1,109 @@
+# Laptop sim config. On the Pi, point database.path at /var/lib/fermentd/fermentd.db,
+# set one_wire.sysfs_root to /sys/bus/w1/devices, set the real ROM ids, and set
+# temp_zones[0].heater.driver to tuya. See README.md.
+
+site:
+  name: basement
+  timezone: America/New_York
+
+database:
+  path: data/fermentd.db
+  backup_dir: data/backups
+  raw_retention_days: 30
+
+one_wire:
+  gpio: 4
+  sysfs_root: /sys/bus/w1/devices
+  ambient_probe: 28-0000000000a1
+
+temp_zones:
+  - id: zone1
+    name: Zone 1
+    capability: heat
+    mode: auto
+    heater:
+      driver: sim
+      device_id_ref: teckin_mat
+      ip: 192.168.1.50
+      protocol_version: "3.3"
+      switch_dp: 1
+      # Set only after a bench test shows this DP opens the relay with the Pi disconnected.
+      # A plug-in thermostat set to about 78 F still belongs between the plug and the mat.
+      countdown_dp: 11          # Teckin SP10 countdown_1; bench-tested 2026-10-12 (60 s countdown switched the relay off)
+    default_target_f: 72.0
+    default_hysteresis_f: 1.0
+    min_on_minutes: 5
+    min_off_minutes: 5
+
+vessels:
+  - id: vessel1
+    name: Vessel 1
+    vessel_type: bottle_group
+    capacity_l: 3.8
+    enabled: true
+    temp_zone: zone1
+    hx711: null
+    probe_rom_id: 28-0000000000b2
+    # Load-cell scale (HX711). Leave out, or driver: none, until it is wired.
+    # scale:
+    #   driver: hx711        # or sim for a simulated scale
+    #   dout_gpio: 5         # HX711 DT  -> physical pin 29
+    #   sck_gpio: 6          # HX711 SCK -> physical pin 31
+    #   samples: 15          # median of 15 reads per sample
+    #   sample_interval_s: 300
+    # Tare and calibration are done on the vessel page (or fermentd-ctl scale-tare /
+    # scale-calibrate) and stored in the database; tare_offset / counts_per_gram here are
+    # optional starting values only.
+
+safety:
+  cutoff_f: 80.0
+  cutoff_clear_f: 78.0
+  max_on_minutes: 240
+  rest_minutes: 15
+  probe_min_f: 32.0
+  probe_max_f: 120.0
+  max_rate_f_per_min: 5.0
+  ambient_fault_disables_heat: true
+  plug_unreachable_alert_after_s: 180
+
+control:
+  target_min_f: 50.0
+  target_max_f: 75.0
+  hysteresis_min_f: 0.5
+  hysteresis_max_f: 3.0
+  over_target_margin_f: 2.0
+  over_target_minutes: 120
+  # Warnings stay quiet this long after a stage change, and a just-moved probe is ignored for stats
+  # and alerts for probe_settle_minutes.
+  stage_change_grace_minutes: 120
+  probe_settle_minutes: 10
+  # Heat tuning per vessel type or vessel id (built-in defaults in src/fermentd/control/tuning.py):
+  #   jug:          on/off, off 0.4 F below target, back on 0.6 F below, 5-min min on/off, 3-reading median
+  #   bottle_group: one burst per 60-min window, 25 % at target + 35 % per degree below,
+  #                 15-min min on/off, burst ends early 0.3 F above target
+  # tuning:
+  #   bottle_group: {window_min: 60, base_duty: 0.25, gain_per_f: 0.35}
+  #   jug: {overshoot_f: 0.4, on_below_f: 0.6}
+
+profiles:
+  builtin: true
+  user_dir: config/profiles.d
+  default_profile: soda_ginger_ale
+  carbonation_max_vol: 3.0
+
+digest:
+  enabled: true
+  weekday: sunday
+  time: "09:00"
+
+web:
+  # Keep this on 127.0.0.1 (behind a reverse proxy) or a Tailscale address. Any other
+  # address needs a login (`fermentd-ctl set-password`) or the web service refuses to start.
+  bind: 127.0.0.1
+  port: 8080
+  url: http://127.0.0.1:8080
+  # Other origins allowed to post forms, e.g. a reverse proxy: ["https://fermentd.example.com"]
+  allowed_origins: []
+  allow_insecure: false
+
+secrets: config/secrets.yaml

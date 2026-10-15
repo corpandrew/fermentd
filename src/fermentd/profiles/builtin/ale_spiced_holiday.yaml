@@ -1,0 +1,73 @@
+id: ale_spiced_holiday
+name: Spiced holiday ale
+extends: null
+status: supported
+requires_capability:
+- heat
+tracking_mode: timer
+category: ale
+vessel_types:
+- jug
+recipe: docs/recipes/ale_spiced_holiday.md
+default_stage: primary
+temperature:
+  default_target_f: 64
+  recommended_f:
+  - 62
+  - 68
+  allowed_target_f:
+  - 60
+  - 70
+  default_hysteresis_f: 1.0
+done_rule:
+  type: timer
+stages:
+- id: primary
+  core: primary
+  tracking: timer
+  target_f: 64
+  ramp:
+    after: 4d
+    target_f: 68
+- id: bottle
+  core: packaging
+- id: bottle_condition
+  core: conditioning
+  tracking: timer
+  target_f: 70
+- id: cellared
+  core: done
+reminders:
+- id: airlock
+  at: stage:primary+1d
+  text: Check for foam (krausen). If it reaches the airlock, use a blow-off tube.
+- id: gravity
+  at: stage:primary+10d
+  text: Take a hydrometer reading. Bottle only at 1.014-1.018 and stable on 3 readings over 3 days.
+  repeat: 2d
+- id: tester
+  at: stage:bottle_condition+7d
+  text: Squeeze the plastic tester. Conditioning is done when it is rock hard.
+  repeat: 2d
+- id: condition_done
+  at: stage:bottle_condition+14d
+  text: If the tester is rock hard, move the bottles to cool storage. The spice softens over 2-4 weeks.
+  repeat: 3d
+guidance:
+  headspace: Fill the jug to the shoulder. Ales foam hard on days 1-3; a blow-off tube is safer than an airlock in a full jug.
+  blowoff: Use a blow-off tube into a jar of sanitizer for the first 3 days, then switch to the airlock.
+  sampling: Pull samples with a sanitized wine thief. Squeeze the plastic tester instead of opening glass.
+  safety_glass: Prime only beer that is fully fermented, with the same gravity on 3 readings over 3 days.
+  safety_pitch: Chill the wort below 70 F before pitching.
+  note: The rig is heat-only and caps every target at 75 F. It can hold a floor but cannot cool, so put the cooler in the coolest spot you have.
+alerts:
+  pressure_risk_margin_f: 6
+  warm_action_f: 72
+  over_target_margin_f: 4
+safety:
+  cutoff_f: 75
+carbonation:
+  default: sparkling
+  target_vol: 2.3
+  max_vol: 3.0
+  method: priming

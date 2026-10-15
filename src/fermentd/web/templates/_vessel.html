@@ -1,0 +1,177 @@
+<article class="card vessel" id="vessel-{{ vessel.id }}">
+  <div class="card-head">
+    <div>
+      {% if vessel.batch %}
+      <h2 class="card-title">{% if detail %}{{ vessel.batch.name }}{% else %}<a href="/vessels/{{ vessel.id }}">{{ vessel.batch.name }}</a>{% endif %}</h2>
+      <p class="card-sub">{{ vessel.batch.profile_name or vessel.batch.profile_id }} · {{ vessel.name }}{% if vessel.show_zone and vessel.zone_name %} · {{ vessel.zone_name }}{% endif %}</p>
+      {% else %}
+      <h2 class="card-title">{% if detail %}{{ vessel.name }}{% else %}<a href="/vessels/{{ vessel.id }}">{{ vessel.name }}</a>{% endif %}</h2>
+      <p class="card-sub">No batch running · {{ vessel.place_label }}</p>
+      {% endif %}
+    </div>
+    <div class="badges">
+      {% if vessel.batch %}
+        <span class="badge accent">{{ vessel.batch.stage_label }}</span>
+      {% else %}
+        <span class="badge plain">Idle</span>
+      {% endif %}
+      <span class="badge {{ 'heat' if vessel.heater_on else 'plain' }}" data-bind="heater-badge">Heat mat <span data-bind="heater">{{ "on" if vessel.heater_on else "off" }}</span></span>
+    </div>
+  </div>
+
+  {% if vessel.batch %}
+  <div>
+    {% if vessel.guide_url %}<a class="button secondary sm" style="float: right" href="{{ vessel.guide_url }}">Guide</a>{% endif %}
+    <p class="muted small"><span>Started {{ vessel.batch.started_label }}</span>{% if vessel.elapsed_label %} · <span data-bind="elapsed">{{ vessel.elapsed_label }}</span>{% endif %}</p>
+    {% if vessel.steps %}
+    <ol class="rail" aria-label="Stages">
+      {% for step in vessel.steps %}<li data-state="{{ step.state }}">{{ step.label }}</li>{% endfor %}
+    </ol>
+    {% endif %}
+  </div>
+  {% endif %}
+
+  <div class="vessel-grid">
+    <div class="stats">
+      <div>
+        <p class="section-title">Bottle temperature</p>
+        <p class="temp" data-bind="temp" data-tone="{{ vessel.tone }}" data-empty="No reading yet">{{ vessel.vessel_temp_label or "No reading yet" }}</p>
+        {% if vessel.batch and vessel.target_label %}<p class="muted small" style="margin-top: 0.35rem">Holding {{ vessel.target_label }}</p>{% elif not vessel.batch %}<p class="muted small" style="margin-top: 0.35rem" data-idle>Idle · no batch, heat mat stays off</p>{% endif %}
+      </div>
+      <dl class="kv">
+        <dt>Room</dt><dd data-bind="ambient">{{ vessel.ambient_temp_label or "—" }}</dd>
+        <dt>Heat mat</dt><dd><span class="lamp" data-bind="lamp" data-on="{{ '1' if vessel.heater_on else '0' }}" aria-hidden="true"></span><span data-bind="heater-word">{{ "Heating" if vessel.heater_on else "Off" }}</span></dd>
+      </dl>
+      {% if vessel.meter and vessel.batch %}
+      <div class="meter" role="img" aria-label="Bottle temperature against the target band">
+        <div class="meter-track">
+          <div class="meter-band" style="left: {{ vessel.meter.band_left }}%; width: {{ vessel.meter.band_width }}%"></div>
+          <div class="meter-mark" data-bind="mark"{% if vessel.meter.mark is not none %} style="left: {{ vessel.meter.mark }}%"{% else %} hidden{% endif %}></div>
+        </div>
+        <div class="meter-scale"><span>{{ vessel.meter.low_label }}</span><span>{{ vessel.target_label }}</span><span>{{ vessel.meter.high_label }}</span></div>
+      </div>
+      {% endif %}
+      {% if vessel.carbonation %}
+      <div class="window">
+        <div class="window-track" role="img" aria-label="{{ vessel.carbonation.label }}">
+          <div class="window-fill" data-bind="carbonation" style="width: {{ vessel.carbonation.progress_pct }}%"></div>
+          <div class="window-tick" style="left: {{ vessel.carbonation.tick_pct }}%"></div>
+        </div>
+        <p class="muted">{{ vessel.carbonation.label }}</p>
+      </div>
+      {% endif %}
+    </div>
+    <figure class="chart">
+      <div class="chart-head">
+        <figcaption>Last 24 hours</figcaption>
+        {% if vessel.chart_ready %}
+        <ul class="legend">
+          <li><i class="swatch bottles"></i> Bottles</li>
+          <li><i class="swatch room"></i> Room</li>
+          <li><i class="swatch target"></i> Target</li>
+          <li><i class="swatch heat"></i> Heat mat on</li>
+          <li><i class="swatch duty"></i> % on per hour</li>
+        </ul>
+        {% endif %}
+      </div>
+      <div data-chart>{{ charts[vessel.id] | safe }}</div>
+    </figure>
+  </div>
+
+  {% set open_texts = alerts | selectattr('status', 'equalto', 'open') | map(attribute='text') | list %}
+  {% set show_next = vessel.next_reminder and (detail or vessel.next_reminder.text not in open_texts) %}
+  {% set show_safety = detail and vessel.batch and vessel.batch.guidance %}
+  {% set show_start = not vessel.batch %}
+  {% set show_end = detail and vessel.batch %}
+  {% set show_fridge = vessel.batch and vessel.batch.next_stage %}
+  {% if show_next or show_safety or show_start or show_fridge or show_end %}
+  <div class="vessel-foot">
+    {% if show_start %}
+    <div class="empty-state">
+      <div>
+        <h3>Start a batch</h3>
+        <p class="muted small">Pick a beverage and give the batch a name to start tracking it in this vessel.</p>
+      </div>
+      <form class="start" method="post" action="/vessels/{{ vessel.id }}/start">
+        <label class="field" for="name-{{ vessel.id }}"><span>Batch name</span>
+          <input id="name-{{ vessel.id }}" name="name" value="{{ vessel.default_choice.default_name if vessel.default_choice else '' }}" placeholder="Batch name" autocomplete="off" data-batch-name>
+        </label>
+        <label class="field" for="profile-{{ vessel.id }}"><span>Beverage</span>
+          <select id="profile-{{ vessel.id }}" name="profile_id" data-profile-select>
+            {% for choice in vessel.profile_choices if choice.available %}
+            <option value="{{ choice.id }}"{% if vessel.default_choice and choice.id == vessel.default_choice.id %} selected{% endif %} data-default-name="{{ choice.default_name }}">{{ choice.name }}</option>
+            {% endfor %}
+            {% set later = vessel.profile_choices | rejectattr('available') | list %}
+            {% if later %}
+            <optgroup label="Coming later">
+              {% for choice in later %}<option value="{{ choice.id }}" disabled>{{ choice.name }}</option>{% endfor %}
+            </optgroup>
+            {% endif %}
+          </select>
+        </label>
+        <label class="field" for="size-{{ vessel.id }}"><span>Batch size</span>
+          <select id="size-{{ vessel.id }}" name="batch_size_gal">
+            <option value="1" selected>1 gallon</option>
+            <option value="0.5">Half gallon (test batch, 5-6 bottles)</option>
+          </select>
+        </label>
+        <label class="field" for="when-{{ vessel.id }}"><span>Where are you?</span>
+          <select id="when-{{ vessel.id }}" name="start_stage">
+            <option value="prep" selected>Making it now (no heat until it is ready)</option>
+            <option value="">It is already mixed and ready to ferment</option>
+          </select>
+        </label>
+        {% if start_sources %}
+        <label class="field" for="from-{{ vessel.id }}"><span>Start from</span>
+          <select id="from-{{ vessel.id }}" name="start_from">
+            <option value="">The recipe as written</option>
+            {% for src in start_sources %}<option value="{{ src.value }}">{{ src.label }}</option>{% endfor %}
+          </select>
+        </label>
+        {% endif %}
+        <input type="hidden" name="confirm" value="yes">
+        <input type="hidden" name="idempotency_key" value="start-{{ vessel.id }}-{{ token }}">
+        <button type="submit">Start batch</button>
+      </form>
+    </div>
+    {% endif %}
+    {% if show_next %}
+    <section class="next">
+      <p class="section-title">Next</p>
+      <p data-bind="reminder">{{ vessel.next_reminder.text }}</p>
+      <p class="muted small" data-bind="due">{{ vessel.next_reminder.due_label }}</p>
+      {% if detail %}
+      <form method="post" action="/reminders/{{ vessel.next_reminder.id }}/complete" style="margin-top: 0.6rem">
+        <input type="hidden" name="confirm" value="yes">
+        <input type="hidden" name="vessel_id" value="{{ vessel.id }}">
+        <input type="hidden" name="idempotency_key" value="reminder-{{ vessel.next_reminder.id }}-{{ token }}">
+        <button type="submit" class="secondary sm">Mark reminder done</button>
+      </form>
+      {% endif %}
+    </section>
+    {% endif %}
+    {% if show_safety %}
+    <aside class="safety">{{ vessel.batch.guidance }}</aside>
+    {% endif %}
+    {% if show_fridge or show_end %}
+    <div class="actions">
+      {% if show_fridge %}
+      <form method="post" action="/vessels/{{ vessel.id }}/stage">
+        <input type="hidden" name="stage" value="{{ vessel.batch.next_stage.id }}">
+        <input type="hidden" name="confirm" value="yes">
+        <input type="hidden" name="idempotency_key" value="stage-{{ vessel.id }}-{{ token }}">
+        <button type="submit" class="secondary">{{ vessel.batch.next_stage.action }}</button>
+      </form>
+      {% endif %}
+      {% if show_end %}
+      <form method="post" action="/vessels/{{ vessel.id }}/end" data-confirm="The heat mat turns off and this batch moves to History." data-confirm-title="End this batch?" data-confirm-ok="End batch" data-confirm-danger>
+        <input type="hidden" name="confirm" value="yes">
+        <input type="hidden" name="idempotency_key" value="end-{{ vessel.id }}-{{ token }}">
+        <button type="submit" class="outline-danger">End batch</button>
+      </form>
+      {% endif %}
+    </div>
+    {% endif %}
+  </div>
+  {% endif %}
+</article>

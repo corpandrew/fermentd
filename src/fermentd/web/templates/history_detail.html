@@ -1,0 +1,58 @@
+{% extends "base.html" %}
+{% block body %}
+<div class="page-head">
+  <div>
+    <p class="crumb"><a href="/history">History</a> / {{ batch.name }}</p>
+    <h2>{{ batch.name }}</h2>
+    <p>{{ batch.profile_name }} · {{ batch.vessel_name }} · {{ batch.started_label }} to {{ batch.ended_label }}</p>
+  </div>
+  <div class="badges"><span class="badge plain">{{ batch.stage_label }}</span><span class="badge plain">{{ batch.duration_label }}</span></div>
+</div>
+<div class="tiles">
+  <div class="tile"><p class="k">Average</p><p class="v">{{ batch.temp_mean_label or "—" }}</p></div>
+  <div class="tile"><p class="k">Low</p><p class="v">{{ batch.temp_min_label or "—" }}</p></div>
+  <div class="tile"><p class="k">High</p><p class="v">{{ batch.temp_max_label or "—" }}</p></div>
+  <div class="tile"><p class="k">Heat mat on</p><p class="v">{{ batch.heater_duty_pct ~ "%" if batch.heater_duty_pct is not none else "—" }}</p></div>
+  <div class="tile"><p class="k">Warnings</p><p class="v">{{ batch.alert_count }}</p></div>
+</div>
+<section class="card" style="display: grid; gap: 1rem">
+  <figure class="chart">
+    <div class="chart-head">
+      <figcaption>Whole batch</figcaption>
+      {% if batch.reading_count %}
+      <ul class="legend">
+        <li><i class="swatch bottles"></i> Bottles</li><li><i class="swatch room"></i> Room</li>
+        <li><i class="swatch target"></i> Target</li><li><i class="swatch heat"></i> Heat mat on</li>
+      </ul>
+      {% endif %}
+    </div>
+    <div>{{ chart | safe }}</div>
+  </figure>
+  {% if not batch.reading_count %}<p class="muted small">No temperature readings were recorded for this batch.</p>{% endif %}
+</section>
+<section class="card" style="display: grid; gap: 0.75rem; border-color: rgba(242, 98, 111, 0.3)">
+  <div>
+    <h3 class="card-title" style="font-size: 1rem">Danger zone</h3>
+    <p class="muted small">Deleting removes this batch and all of its readings, reminders, notes, and alerts. This cannot be undone.</p>
+  </div>
+  {% if confirm_delete %}
+  <form method="post" action="/history/{{ batch.id }}/delete" class="stack">
+    <p class="banner critical">Delete {{ batch.name }} and all of its readings, reminders, notes, and alerts? This cannot be undone.</p>
+    <input type="hidden" name="confirm" value="yes">
+    <input type="hidden" name="idempotency_key" value="delete-{{ batch.id }}-{{ token }}">
+    <div class="actions" style="justify-content: flex-start">
+      <button type="submit" class="destructive">Yes, delete this batch</button>
+      <a class="button secondary" href="/history/{{ batch.id }}">Cancel</a>
+    </div>
+  </form>
+  {% else %}
+  <form id="delete-form" method="post" action="/history/{{ batch.id }}/delete" hidden>
+    <input type="hidden" name="confirm" value="yes">
+    <input type="hidden" name="idempotency_key" value="delete-{{ batch.id }}-{{ token }}">
+  </form>
+  <div><a class="button outline-danger" href="/history/{{ batch.id }}?delete=1" data-confirm-form="delete-form" data-confirm="This removes {{ batch.name }} and all of its readings, reminders, notes, and alerts. This cannot be undone." data-confirm-title="Delete this batch?" data-confirm-ok="Delete batch" data-confirm-danger>Delete from history</a></div>
+  {% endif %}
+</section>
+{% include "_batch_extras.html" %}
+{% include "_timeline.html" %}
+{% endblock %}

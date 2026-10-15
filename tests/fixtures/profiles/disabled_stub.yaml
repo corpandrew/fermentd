@@ -1,0 +1,19 @@
+id: disabled_stub
+name: Disabled stub (test only)
+extends: null
+status: unsupported_v1
+requires_capability: [heat]
+tracking_mode: weight
+vessel_types: [jug]
+temperature:
+  default_target_f: 62
+  recommended_f: [55, 70]
+  allowed_target_f: [55, 70]
+  default_hysteresis_f: 1.0
+done_rule:
+  type: timer
+stages:
+  - {id: primary, core: primary}
+  - {id: finished, core: done}
+guidance:
+  note: Test-only fixture for a disabled (unsupported_v1) profile.

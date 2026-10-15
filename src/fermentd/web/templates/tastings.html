@@ -1,0 +1,18 @@
+{% extends "base.html" %}
+{% block body %}
+<div class="page-head"><div><h2>Your best batches</h2><p class="muted">Ranked by your average tasting score.</p></div></div>
+{% if types %}<p class="small">Show: <a href="/tastings">everything</a>{% for t in types %} · <a href="/tastings?type={{ t }}"{% if t == type %} aria-current="page"{% endif %}>{{ t.replace('_', ' ') }}</a>{% endfor %}</p>{% endif %}
+<section class="card" data-ranking>
+  {% for r in ranked %}
+  <article class="rank">
+    <p><strong>{{ loop.index }}. {% if r.url %}<a href="{{ r.url }}">{{ r.name }}</a>{% else %}{{ r.name }}{% endif %}</strong>
+      <span class="stars">{{ r.stars }}</span> <span class="muted small">{{ r.avg_rating }} from {{ r.tastings }} tasting{{ '' if r.tastings == 1 else 's' }}</span>
+      {% if r.make_again %}<span class="badge plain">Would make again</span>{% endif %}</p>
+    <p class="muted small">{{ r.profile_name }}{% if r.changes %} · Changes: {{ r.changes | join('; ') }}{% else %} · made as written{% endif %}</p>
+    {% if r.latest_note %}<p class="small">“{{ r.latest_note }}”</p>{% endif %}
+  </article>
+  {% else %}
+  <p class="muted">No tastings yet. Add one from a batch page.</p>
+  {% endfor %}
+</section>
+{% endblock %}

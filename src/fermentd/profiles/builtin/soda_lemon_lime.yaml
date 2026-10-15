@@ -1,0 +1,64 @@
+id: soda_lemon_lime
+name: Lemon-lime soda
+extends: null
+status: supported
+requires_capability:
+- heat
+tracking_mode: timer
+category: soda
+vessel_types:
+- jug
+- bottle_group
+recipe: docs/recipes/soda_lemon_lime.md
+default_stage: in_bottle
+temperature:
+  default_target_f: 72
+  recommended_f:
+  - 68
+  - 75
+  allowed_target_f:
+  - 68
+  - 75
+  default_hysteresis_f: 1.0
+done_rule:
+  type: timer
+stages:
+- id: bottle
+  core: packaging
+- id: in_bottle
+  core: conditioning
+  tracking: timer
+- id: refrigerated
+  core: done
+reminders:
+- id: squeeze
+  at: stage:in_bottle+12h
+  repeat: 12h
+  text: Squeeze the plastic seltzer bottle. Twice a day until it is rock hard.
+- id: refrigerate_now
+  at: stage:in_bottle+24h
+  repeat: 6h
+  text: If the plastic bottle is rock hard, move every bottle to the fridge now. Do not leave glass swing-tops warm.
+- id: open
+  at: stage:refrigerated+24h
+  text: Chill is done. Open the first bottle slowly over the sink.
+- id: finish
+  at: stage:refrigerated+14d
+  text: Drink the lemon-lime soda within the next week. Yeast keeps working slowly even cold.
+guidance:
+  headspace: Leave 1-2 inches of headspace in each swing-top.
+  blowoff: Not used. Mix in the pot and bottle on day 0; no jug or fermenter needed.
+  sampling: Squeeze the plastic seltzer bottle. Do not open a glass bottle to check pressure.
+  safety_glass: Swing-tops are glass. Over-carbonated glass can burst. Never leave the bottles warm once the plastic bottle is rock hard.
+  safety_pitch: Wait until the liquid is below 80 F before pitching. Hot liquid kills yeast.
+alerts:
+  pressure_risk_margin_f: 3
+  warm_action_f: 75
+  over_target_margin_f: 2
+safety:
+  cutoff_f: 80
+carbonation:
+  default: sparkling
+  target_vol: 0
+  max_vol: 3.0
+  method: in_bottle

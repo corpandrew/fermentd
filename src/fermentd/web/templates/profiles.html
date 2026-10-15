@@ -1,0 +1,22 @@
+{% extends "base.html" %}
+{% block body %}
+<div class="page-head">
+  <div><h2>Profiles</h2><p>Built-in profiles are read-only. Editing one saves your own copy.</p></div>
+</div>
+<div class="table-wrap">
+  <table class="data">
+    <thead><tr><th>Profile</th><th>Status</th><th class="hide-sm">Needs</th><th>Target</th><th class="hide-sm">Tracking</th></tr></thead>
+    <tbody>
+      {% for p in profiles %}
+      <tr>
+        <td><a class="rowlink" href="/profiles/{{ p.id }}">{{ p.name }}</a><div class="muted small">{{ "Built-in" if p.builtin else "Yours, v" ~ p.version }}</div></td>
+        <td>{% if p.status == 'supported' %}<span class="badge ok">Supported</span>{% elif p.status == 'experimental' %}<span class="badge warn">Experimental</span>{% else %}<span class="badge plain">Not supported yet</span>{% endif %}</td>
+        <td class="hide-sm">{% for cap in p.requires_capability %}<span class="badge plain">{{ cap }}</span> {% endfor %}</td>
+        <td class="num">{{ p.target_label }}</td>
+        <td class="hide-sm">{{ p.tracking_mode | capitalize }}</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endblock %}

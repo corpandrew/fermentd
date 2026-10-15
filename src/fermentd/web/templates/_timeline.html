@@ -1,0 +1,39 @@
+{% if timeline %}
+<section class="card" id="timeline" data-timeline>
+  <div class="tl-head">
+    <p class="section-title">Batch diary</p>
+    <nav class="tl-filter" aria-label="Show">
+      <a href="?show=all#timeline" class="{{ 'on' if timeline.show == 'all' }}">Everything</a>
+      <a href="?show=notes#timeline" class="{{ 'on' if timeline.show == 'notes' }}">Notes only</a>
+    </nav>
+  </div>
+  <form method="post" action="/batches/{{ timeline.batch_id }}/notes" enctype="multipart/form-data" class="tl-add">
+    <input type="hidden" name="confirm" value="yes">
+    <input type="hidden" name="idempotency_key" value="note-{{ timeline.batch_id }}-{{ token }}">
+    <textarea name="text" rows="2" maxlength="2000" placeholder="What did you notice? e.g. Lots of bubbles today, smells gingery"></textarea>
+    <div class="tl-add-row">
+      <label class="button outline small tl-photo">📷 Add a photo
+        <input type="file" name="photo" accept="image/*" capture="environment" hidden
+               onchange="this.closest('label').querySelector('span').textContent = this.files.length ? ' · ' + this.files[0].name : ''"><span></span>
+      </label>
+      <button type="submit">Save note</button>
+    </div>
+  </form>
+  {% if timeline['items'] %}
+  <ol class="tl">
+    {% for it in timeline['items'] %}
+    <li class="tl-item tl-{{ 'note' if it.kind == 'note' else 'action' }}">
+      <span class="tl-icon" aria-hidden="true">{{ it.icon }}</span>
+      <div class="tl-body">
+        <p class="tl-meta"><span>{{ it.when }}</span> · <span class="tl-src">{{ it.source }}</span></p>
+        {% if it.text %}<p class="tl-text">{{ it.text }}</p>{% endif %}
+        {% if it.thumb_url %}<a href="{{ it.photo_url }}" target="_blank"><img class="tl-photo-img" src="{{ it.thumb_url }}" alt="Batch photo" loading="lazy"></a>{% endif %}
+      </div>
+    </li>
+    {% endfor %}
+  </ol>
+  {% else %}
+  <p class="muted small">{{ 'No notes yet.' if timeline.show == 'notes' else 'Nothing logged yet.' }} Notes, photos and everything you change on this batch show up here.</p>
+  {% endif %}
+</section>
+{% endif %}

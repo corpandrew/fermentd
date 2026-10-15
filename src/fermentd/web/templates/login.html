@@ -1,0 +1,24 @@
+{% extends "base.html" %}
+{% block title %}Log in · fermentd{% endblock %}
+{% block body %}
+<section class="card login-card" aria-labelledby="login-title">
+  <div class="login-head">
+    <img src="/static/logo.svg" alt="" width="48" height="48">
+    <div>
+      <h1 id="login-title" class="card-title">Log in</h1>
+      <p class="card-sub">Changes on this dashboard need a password. Reading it does not.</p>
+    </div>
+  </div>
+  {% if has_password %}
+  <form method="post" action="/login" class="login-form">
+    <input type="hidden" name="next" value="{{ next }}">
+    <label class="field"><span>Password</span>
+      <input type="password" name="password" autocomplete="current-password" required autofocus>
+    </label>
+    <button type="submit">Log in</button>
+  </form>
+  {% else %}
+  <p class="card-sub">This dashboard only accepts API tokens. Set a password with <code>fermentd-ctl set-password</code>.</p>
+  {% endif %}
+</section>
+{% endblock %}

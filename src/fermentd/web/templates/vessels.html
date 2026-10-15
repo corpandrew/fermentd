@@ -1,0 +1,80 @@
+{% extends "base.html" %}
+{% block body %}
+<div class="page-head">
+  <div>
+    <h2>Vessels</h2>
+    <p>Vessels in the same zone share one heat mat and one target. Names, types, and zones set here override fermentd.yaml.</p>
+  </div>
+  <button type="button" data-open="add-vessel">Add vessel</button>
+</div>
+<div class="table-wrap">
+  <table class="data">
+    <thead><tr><th>Vessel</th><th class="hide-sm">Type</th><th>Zone</th><th class="hide-sm">Probe</th><th>Batch</th><th></th></tr></thead>
+    <tbody>
+      {% for vessel in status.vessels %}
+      <tr>
+        <td><a class="rowlink" href="/vessels/{{ vessel.id }}">{{ vessel.name }}</a></td>
+        <td class="hide-sm">{{ vessel.vessel_label }}</td>
+        <td>{{ vessel.zone_name or "None" }}</td>
+        <td class="hide-sm"><code>{{ vessel.probe_rom_id or "none" }}</code></td>
+        <td>{% if vessel.batch %}<span class="badge accent">{{ vessel.batch.name }}</span>{% else %}<span class="badge plain">Empty</span>{% endif %}</td>
+        <td style="text-align: right">
+          {% if true %}
+          <button type="button" class="ghost sm" data-open="edit-{{ vessel.id }}">Edit</button>
+          <dialog id="edit-{{ vessel.id }}" class="wide" aria-labelledby="edit-title-{{ vessel.id }}">
+            <form method="post" action="/vessels/{{ vessel.id }}/edit" class="stack" style="text-align: left">
+              <h3 id="edit-title-{{ vessel.id }}">Edit {{ vessel.name }}</h3>
+              {% if vessel.batch %}<p class="banner error">A batch is running here, so only the name can change.</p>{% endif %}
+              <label class="field"><span>Name</span><input name="name" value="{{ vessel.name }}" required></label>
+              <div class="form-row">
+                <label class="field"><span>Type</span><select name="vessel_type"{% if vessel.batch %} disabled{% endif %}>{% for t in vessel_types %}<option value="{{ t }}"{% if t == vessel.vessel_type %} selected{% endif %}>{{ t.replace('_', ' ') | capitalize }}</option>{% endfor %}</select></label>
+                <label class="field"><span>Zone</span><select name="temp_zone"{% if vessel.batch %} disabled{% endif %}><option value="">None</option>{% for z in zones %}<option value="{{ z.id }}"{% if z.id == vessel.zone_id %} selected{% endif %}>{{ z.name }}</option>{% endfor %}</select></label>
+              </div>
+              <div class="form-row">
+                <label class="field"><span>Probe ROM id <span class="hint">leave blank until wired</span></span><input name="probe_rom_id" value="{{ vessel.probe_rom_id or '' }}" placeholder="28-..."{% if vessel.batch %} readonly{% endif %}></label>
+                <input type="hidden" name="capacity_l" value="{{ vessel.capacity_l or '' }}">
+              </div>
+              <input type="hidden" name="confirm" value="yes">
+              <input type="hidden" name="idempotency_key" value="edit-{{ vessel.id }}-{{ token }}">
+              <div class="dialog-actions">
+                <button type="button" class="secondary" data-close>Cancel</button>
+                <button type="submit">Save changes</button>
+              </div>
+            </form>
+          </dialog>
+          {% if vessel.source == 'dashboard' and not vessel.batch %}
+          <form method="post" action="/vessels/{{ vessel.id }}/edit" style="display: inline" data-confirm="{{ vessel.name }} will be removed from the dashboard. Its past batches stay in History." data-confirm-title="Remove this vessel?" data-confirm-ok="Remove" data-confirm-danger>
+            <input type="hidden" name="remove" value="yes">
+            <input type="hidden" name="confirm" value="yes">
+            <input type="hidden" name="idempotency_key" value="remove-{{ vessel.id }}-{{ token }}">
+            <button type="submit" class="ghost sm" style="color: var(--danger)">Remove vessel</button>
+          </form>
+          {% endif %}
+          {% endif %}
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+<section class="card" style="display: grid; gap: 0.75rem">
+  <div><h3 class="card-title" style="font-size: 1rem">Temperature zones</h3><p class="muted small">Each zone is one heat mat. Rename it to whatever makes sense to you.</p></div>
+  {% for z in zones %}
+  <form method="post" action="/zones/{{ z.id }}/rename" class="start" style="grid-template-columns: 1fr auto">
+    <label class="field"><span>Zone name <span class="hint">{{ z.id }}</span></span><input name="name" value="{{ z.name }}" required></label>
+    <input type="hidden" name="confirm" value="yes">
+    <input type="hidden" name="idempotency_key" value="zone-{{ z.id }}-{{ token }}">
+    <button type="submit" class="secondary">Rename</button>
+  </form>
+  {% endfor %}
+</section>
+<details class="card" id="add-vessel-fallback">
+  <summary class="section-title" style="margin: 0; cursor: pointer">Add a vessel</summary>
+  <div style="margin-top: 1rem">{% include "_vessel_add_form.html" %}</div>
+</details>
+<dialog id="add-vessel" class="wide" aria-labelledby="add-title">
+  <h3 id="add-title">Add a vessel</h3>
+  <p style="margin-bottom: 1rem">A batch can only join a busy zone if the zone's current target fits its profile.</p>
+  {% include "_vessel_add_form.html" %}
+</dialog>
+{% endblock %}

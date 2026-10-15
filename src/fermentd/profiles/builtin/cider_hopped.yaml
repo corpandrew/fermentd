@@ -1,0 +1,75 @@
+id: cider_hopped
+name: Dry-hopped cider
+extends: null
+status: supported
+requires_capability:
+- heat
+tracking_mode: timer
+category: cider
+vessel_types:
+- jug
+recipe: docs/recipes/cider_hopped.md
+default_stage: primary
+temperature:
+  default_target_f: 62
+  recommended_f:
+  - 58
+  - 64
+  allowed_target_f:
+  - 56
+  - 68
+  default_hysteresis_f: 1.0
+done_rule:
+  type: timer
+stages:
+- id: primary
+  core: primary
+  tracking: timer
+- id: dry_hop
+  core: secondary
+  tracking: timer
+- id: bottle
+  core: packaging
+- id: bottle_condition
+  core: conditioning
+  tracking: timer
+  target_f: 66
+- id: cellared
+  core: done
+reminders:
+- id: airlock
+  at: stage:primary+2d
+  text: Check that the airlock is bubbling. A faint sulfur smell in week 1 is normal.
+- id: gravity
+  at: stage:primary+14d
+  text: Take a hydrometer reading. Rack onto the hops once it is 1.000 or lower and stable for 3 days.
+  repeat: 3d
+- id: pull_hops
+  at: stage:dry_hop+3d
+  text: Taste a sample. Pull the hop bag at day 3-4; longer gets grassy.
+- id: tester
+  at: stage:bottle_condition+7d
+  text: Squeeze the plastic tester bottle. Conditioning is done when it is rock hard.
+  repeat: 2d
+- id: condition_done
+  at: stage:bottle_condition+14d
+  text: If the tester is rock hard, move all bottles to the fridge. Hop aroma fades warm.
+  repeat: 3d
+guidance:
+  headspace: Fill the jug to the shoulder. Leave about 1 inch of headspace in bottles.
+  blowoff: Use the airlock from day 0; wipe and re-sanitize it if foam reaches it.
+  sampling: Pull samples with a sanitized wine thief. Squeeze the plastic tester instead of opening glass.
+  safety_glass: 'Prime only cider that is fully fermented: 1.000 or lower, unchanged on 3 readings over 3 days.'
+  safety_pitch: Pitch at room temperature, below 75 F.
+  note: The rig is heat-only and caps every target at 75 F. It can hold a floor but cannot cool, so put the cooler in the coolest spot you have.
+alerts:
+  pressure_risk_margin_f: 6
+  warm_action_f: 70
+  over_target_margin_f: 3
+safety:
+  cutoff_f: 75
+carbonation:
+  default: sparkling
+  target_vol: 2.6
+  max_vol: 3.0
+  method: priming

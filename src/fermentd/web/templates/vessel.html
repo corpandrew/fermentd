@@ -1,0 +1,103 @@
+{% extends "base.html" %}
+{% block body %}
+<div data-dashboard style="display: grid; gap: 1.25rem">
+  <div><p class="crumb"><a href="/">Overview</a> / {{ vessel.name }}</p></div>
+  {% include "_alert_region.html" %}
+  {% with detail=true %}{% include "_vessel.html" %}{% endwith %}
+  {% if (duty and duty.day_pct is not none) or (cutoff and cutoff.state != "not_configured") %}
+  <section class="card" id="duty" data-duty>
+    <p class="section-title">Heat mat</p>
+    {% if cutoff and cutoff.state != "not_configured" %}
+    <p class="cutoff cutoff-{{ cutoff.state }}" data-cutoff>{{ cutoff.text }}</p>
+    <p class="muted small">The plug switches the mat off by itself if the Pi stops checking in.</p>
+    {% endif %}
+    {% if duty and duty.day_pct is not none %}
+    <div class="tiles">
+      <div class="tile"><p class="k">On, last 24 h</p><p class="v">{{ duty.day_pct }}%</p></div>
+      {% if duty.batch_pct is not none %}<div class="tile"><p class="k">On, this batch</p><p class="v">{{ duty.batch_pct }}%</p></div>{% endif %}
+    </div>
+    <p class="muted small">Share of time the mat was switched on. Steady near 100% means it is struggling to keep up with the room.</p>
+    {% endif %}
+  </section>
+  {% endif %}
+  {% if vessel.batch %}
+  <div class="vessel-grid">
+    {% if target_control %}
+    <section class="card" id="target">
+      <p class="section-title">Target temperature</p>
+      <form method="post" action="/vessels/{{ vessel.id }}/target" class="start" data-confirm="The heat mat will hold the new target." data-confirm-title="Change the target?" data-confirm-ok="Set target">
+        <label class="field" for="target-{{ vessel.id }}"><span>Hold at (°F)</span>
+          <input id="target-{{ vessel.id }}" name="target_f" type="number" step="0.5" min="{{ target_control.low }}" max="{{ target_control.high }}" value="{{ target_control.value }}" required>
+        </label>
+        <input type="hidden" name="confirm" value="yes">
+        <input type="hidden" name="idempotency_key" value="target-{{ vessel.id }}-{{ token }}">
+        <button type="submit" class="secondary">Set target</button>
+      </form>
+      <p class="muted small">Allowed for this batch: {{ target_control.label }}.{% if target_control.shared %} Shared zone: the change applies to every batch in it.{% endif %} The mat only heats; it cannot cool below the room.</p>
+    </section>
+    {% endif %}
+    <section class="card" id="gravity">
+      <p class="section-title">Hydrometer readings</p>
+      <form method="post" action="/vessels/{{ vessel.id }}/gravity" class="start">
+        <label class="field" for="sg-{{ vessel.id }}"><span>Gravity</span>
+          <input id="sg-{{ vessel.id }}" name="sg" inputmode="decimal" placeholder="1.012" pattern="[01]\.[0-9]{3}" required>
+        </label>
+        <label class="field" for="sgt-{{ vessel.id }}"><span>Sample °F (optional)</span>
+          <input id="sgt-{{ vessel.id }}" name="sample_temp_f" type="number" step="1" min="32" max="120">
+        </label>
+        <input type="hidden" name="confirm" value="yes">
+        <input type="hidden" name="idempotency_key" value="sg-{{ vessel.id }}-{{ token }}">
+        <button type="submit" class="secondary">Add reading</button>
+      </form>
+      {% if gravity and gravity.readings %}
+      <div class="tiles" style="margin: 0.8rem 0">
+        <div class="tile"><p class="k">OG</p><p class="v">{{ gravity.og }}</p></div>
+        <div class="tile"><p class="k">Latest</p><p class="v">{{ gravity.readings[0].sg_label }}</p></div>
+        {% if gravity.abv %}<div class="tile"><p class="k">ABV</p><p class="v">{{ gravity.abv }}</p></div>
+        <div class="tile"><p class="k">Attenuation</p><p class="v">{{ gravity.attenuation }}</p></div>{% endif %}
+      </div>
+      {% if gravity.hint %}<p class="{{ 'safety' if gravity.hint.stable else 'muted small' }}" data-gravity-hint>{{ gravity.hint.text }}</p>{% endif %}
+      {% if scale and scale.summary and scale.summary.state == 'stable' %}<p class="muted small" data-weight-hint>Scale agrees: {{ scale.summary.text }}</p>{% endif %}
+      <ul class="muted small">{% for r in gravity.readings %}<li>{{ r.label }}: <strong>{{ r.sg_label }}</strong>{% if r.temp %} at {{ r.temp }}{% endif %}</li>{% endfor %}</ul>
+      {% else %}
+      {% if scale and scale.summary and scale.summary.state == 'stable' %}<p class="safety" data-weight-hint>{{ scale.summary.text }}</p>{% endif %}
+      <p class="muted small">Log your first reading (the OG) on day 0. Correct for sample temperature if your hydrometer is calibrated to 60 °F.</p>
+      {% endif %}
+    </section>
+  </div>
+  {% endif %}
+  {% if scale %}
+  <section class="card" id="scale" data-scale-status="{{ scale.status }}">
+    <p class="section-title">Scale</p>
+    <p class="{{ 'muted small' if scale.status == 'ok' else 'safety' }}">{{ scale.status_label }}{% if scale.driver == 'sim' %} (simulated){% endif %}{% if scale.checked %} · checked {{ scale.checked }}{% endif %}{% if scale.detail %} · {{ scale.detail }}{% endif %}</p>
+    {% if scale.summary %}
+      {% if scale.tiles %}
+      <div class="tiles" style="margin: 0.75rem 0">{% for k, v in scale.tiles %}<div class="tile"><p class="k">{{ k }}</p><p class="v">{{ v }}</p></div>{% endfor %}</div>
+      {% endif %}
+      <p class="{{ 'safety' if scale.summary.state == 'stable' else 'muted small' }}" data-weight-state="{{ scale.summary.state }}">{{ scale.summary.text }}</p>
+      {% if scale.chart %}<figure class="chart"><figcaption>Weight this batch</figcaption>{{ scale.chart | safe }}</figure>{% endif %}
+      {% if scale.volume_note %}<p class="muted small">{{ scale.volume_note }} {{ scale.assumptions }}</p>{% endif %}
+    {% endif %}
+    <details style="margin-top: 0.75rem"{% if scale.status in ('needs_tare', 'needs_calibration') %} open{% endif %}>
+      <summary>Calibrate</summary>
+      <p class="muted small">Tared: {{ scale.tared or 'never' }} · Calibrated: {{ scale.calibrated or 'never' }}{% if scale.cal_weight %} with {{ scale.cal_weight }}{% endif %}</p>
+      <form method="post" action="/vessels/{{ vessel.id }}/scale/tare" class="start" data-confirm="Take everything off the platform first. This sets zero." data-confirm-title="Tare the scale?" data-confirm-ok="Tare">
+        <input type="hidden" name="confirm" value="yes">
+        <input type="hidden" name="idempotency_key" value="tare-{{ vessel.id }}-{{ token }}">
+        <button type="submit" class="secondary">1. Tare (empty platform)</button>
+      </form>
+      <form method="post" action="/vessels/{{ vessel.id }}/scale/calibrate" class="start" style="margin-top: 0.5rem">
+        <label class="field" for="cal-{{ vessel.id }}"><span>2. Known weight on the platform (g)</span>
+          <input id="cal-{{ vessel.id }}" name="grams" type="number" step="1" min="100" max="10000" value="1000" required>
+          <span class="hint">1 L of water = 1000 g. Weigh the container on a kitchen scale and add it.</span>
+        </label>
+        <input type="hidden" name="confirm" value="yes">
+        <input type="hidden" name="idempotency_key" value="cal-{{ vessel.id }}-{{ token }}">
+        <button type="submit" class="secondary">Calibrate</button>
+      </form>
+    </details>
+  </section>
+  {% endif %}
+  {% if vessel.batch %}{% include "_batch_extras.html" %}{% include "_timeline.html" %}{% endif %}
+</div>
+{% endblock %}

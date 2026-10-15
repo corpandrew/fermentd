@@ -1,0 +1,72 @@
+id: ale_saison
+name: Belgian saison
+extends: null
+status: supported
+requires_capability:
+- heat
+tracking_mode: timer
+category: ale
+vessel_types:
+- jug
+recipe: docs/recipes/ale_saison.md
+default_stage: primary
+temperature:
+  default_target_f: 72
+  recommended_f:
+  - 70
+  - 75
+  allowed_target_f:
+  - 66
+  - 75
+  default_hysteresis_f: 1.0
+done_rule:
+  type: timer
+stages:
+- id: primary
+  core: primary
+  tracking: timer
+  ramp:
+    after: 3d
+    target_f: 75
+- id: bottle
+  core: packaging
+- id: bottle_condition
+  core: conditioning
+  tracking: timer
+  target_f: 70
+- id: cellared
+  core: done
+reminders:
+- id: airlock
+  at: stage:primary+1d
+  text: Check for foam (krausen) and airlock activity. If foam reaches the airlock, swap in a blow-off tube or rinse and re-sanitize the airlock.
+- id: gravity
+  at: stage:primary+10d
+  repeat: 2d
+  text: Take a hydrometer reading. Bottle only when it is in the final gravity range and the same on 3 readings over 3 days.
+- id: tester
+  at: stage:bottle_condition+7d
+  repeat: 2d
+  text: Squeeze the plastic tester bottle. Conditioning is done when it is rock hard. At 70 F this takes about 2 weeks.
+- id: condition_done
+  at: stage:bottle_condition+14d
+  repeat: 3d
+  text: If the tester is rock hard, move all bottles to the fridge or cool storage. Do not leave carbonated glass warm.
+guidance:
+  headspace: Fill the jug to the shoulder. Ales foam hard on days 1-3; a blow-off tube is safer than an airlock in a full jug.
+  blowoff: Use a blow-off tube into a jar of sanitizer for the first 3 days, then switch to the airlock.
+  sampling: Pull samples with a sanitized wine thief or the auto-siphon. Squeeze the plastic tester instead of opening glass.
+  safety_glass: Prime only beer that is fully fermented, with the same gravity on 3 readings over 3 days. Priming unfinished beer can burst glass bottles.
+  safety_pitch: Chill the wort below 75 F before pitching.
+  note: These like warmth. The heat mat holds the target even in a cold winter room, so they work well all year. fermentd caps every target at 75 F.
+alerts:
+  pressure_risk_margin_f: 6
+  warm_action_f: 79
+  over_target_margin_f: 4
+safety:
+  cutoff_f: 80
+carbonation:
+  default: sparkling
+  target_vol: 2.8
+  max_vol: 3.0
+  method: priming

@@ -1,0 +1,16 @@
+{% extends "base.html" %}
+{% block body %}
+<div data-dashboard style="display: grid; gap: 1.25rem">
+  <div class="page-head">
+    <div><h2>Overview</h2><p>{{ status.vessels | length }} vessel{{ '' if status.vessels | length == 1 else 's' }} · {{ status.vessels | selectattr('batch') | list | length }} running</p></div>
+    <a class="button secondary" href="/vessels">Manage vessels</a>
+  </div>
+  {% include "_alert_region.html" %}
+  {% for vessel in status.vessels %}
+    {% with detail=false %}{% include "_vessel.html" %}{% endwith %}
+  {% endfor %}
+  {% if not status.vessels %}
+  <div class="card empty">No vessels are configured. <a href="/vessels">Add one</a>.</div>
+  {% endif %}
+</div>
+{% endblock %}

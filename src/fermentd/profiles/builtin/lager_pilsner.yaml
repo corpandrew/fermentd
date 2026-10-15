@@ -1,0 +1,88 @@
+id: lager_pilsner
+name: Czech-style pilsner
+extends: null
+status: supported
+requires_capability:
+- heat
+tracking_mode: timer
+category: lager
+vessel_types:
+- jug
+recipe: docs/recipes/lager_pilsner.md
+default_stage: primary
+temperature:
+  default_target_f: 50
+  recommended_f:
+  - 50
+  - 55
+  allowed_target_f:
+  - 50
+  - 66
+  default_hysteresis_f: 1.0
+done_rule:
+  type: timer
+stages:
+- id: primary
+  core: primary
+  tracking: timer
+- id: diacetyl_rest
+  core: secondary
+  tracking: timer
+  target_f: 60
+- id: lagering
+  core: conditioning
+  optional: true
+  target_f: 50
+- id: bottle
+  core: packaging
+- id: bottle_condition
+  core: conditioning
+  tracking: timer
+  target_f: 66
+- id: cellared
+  core: done
+reminders:
+- id: airlock
+  at: stage:primary+2d
+  text: Lagers start slowly when cold. Check for a thin krausen or airlock activity; up to 72 hours is normal at 50 F.
+- id: room_check
+  at: stage:primary+3d
+  repeat: 3d
+  text: Check the cooler temperature. The heater can only hold the floor; if it reads above 56 F, move the cooler somewhere colder.
+- id: gravity
+  at: stage:primary+10d
+  repeat: 2d
+  text: Take a gravity reading. Start the diacetyl rest once it is within about 0.004 of the expected final gravity.
+- id: drest_done
+  at: stage:diacetyl_rest+3d
+  text: Diacetyl rest done if the gravity is stable and a warmed sample has no butter or butterscotch smell. Set the target back down and move to lagering.
+- id: lager_check
+  at: stage:lagering+21d
+  repeat: 7d
+  text: Lagering is done after 3-6 weeks cold, once the beer is clear. Bottle when it tastes clean.
+- id: tester
+  at: stage:bottle_condition+10d
+  repeat: 2d
+  text: Squeeze the plastic tester bottle. Conditioning is done when it is rock hard.
+- id: condition_done
+  at: stage:bottle_condition+21d
+  repeat: 3d
+  text: If the tester is rock hard, move all bottles to the fridge or a cold garage. Do not leave carbonated glass warm.
+guidance:
+  headspace: Fill the jug to the shoulder. Leave about 1 inch of headspace in bottles.
+  blowoff: Lager foam is gentle when cold, but use the airlock from day 0 and wipe and re-sanitize it if foam reaches it.
+  sampling: Pull samples with a sanitized wine thief or the auto-siphon. Squeeze the plastic tester instead of opening glass.
+  safety_glass: Prime only beer that is fully fermented, with the same gravity on 3 readings over 3 days. Priming unfinished beer can burst glass bottles.
+  safety_pitch: Chill the wort below 60 F before pitching lager yeast.
+  note: The rig is heat-only. It holds a floor of 50 F; the cooler must sit in an unheated spot that stays about 45-55 F (garage or basement). In a 65 F room this will not taste like a lager.
+alerts:
+  pressure_risk_margin_f: 6
+  warm_action_f: 70
+  over_target_margin_f: 6
+safety:
+  cutoff_f: 72
+carbonation:
+  default: sparkling
+  target_vol: 2.5
+  max_vol: 2.8
+  method: priming

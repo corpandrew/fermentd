@@ -1,0 +1,16 @@
+{% extends "base.html" %}
+{% block title %}{{ guide.name }} guide · fermentd{% endblock %}
+{% block body %}
+<div class="page-head">
+  <div>
+    <p class="crumb"><a href="/profiles">Profiles</a> / <a href="/profiles/{{ profile.id }}">{{ profile.name }}</a> / Guide</p>
+    <h2>{{ guide.name }}</h2>
+    {% if guide.sizes | length > 1 %}<p class="size-pick">Batch size:
+      {% for sz in guide.sizes %}{% set label = "1 gallon" if sz == "1" else "Half gallon" %}{% if sz == guide.size %}<strong>{{ label }}</strong>{% else %}<a href="?size={{ sz }}{% if batch_name %}&amp;batch={{ batch_name | urlencode }}{% endif %}">{{ label }}</a>{% endif %}{% if not loop.last %} · {% endif %}{% endfor %}
+    </p>{% endif %}
+    <p>{% if batch_name %}Guide for {{ batch_name }}. {% endif %}Tick steps as you go; checkmarks stay on this device.</p>
+  </div>
+  <a class="button secondary" href="/profiles/{{ profile.id }}">Profile settings</a>
+</div>
+{% include "_guide.html" %}
+{% endblock %}

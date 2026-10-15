@@ -1,0 +1,21 @@
+# Template: render with scripts/install-units.sh (fills in the user and checkout path).
+[Unit]
+Description=fermentd control service (hardware, control loop, safety)
+After=network-online.target time-sync.target
+Wants=network-online.target
+StartLimitIntervalSec=600
+StartLimitBurst=5
+
+[Service]
+Type=simple
+User=@USER@
+WorkingDirectory=@APP_DIR@
+SupplementaryGroups=gpio
+ExecStartPre=@APP_DIR@/.venv/bin/fermentd-ctl --config @APP_DIR@/config/fermentd.yaml heaters-off --all
+ExecStart=@APP_DIR@/.venv/bin/fermentd-control --config @APP_DIR@/config/fermentd.yaml
+ExecStopPost=@APP_DIR@/.venv/bin/fermentd-ctl --config @APP_DIR@/config/fermentd.yaml heaters-off --all
+Restart=always
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target

@@ -1,0 +1,49 @@
+[project]
+name = "fermentd"
+version = "0.1.0"
+description = "Home fermentation monitor and controller for a Raspberry Pi."
+readme = "README.md"
+requires-python = ">=3.11"
+dependencies = [
+  "fastapi>=0.115",
+  "jinja2>=3.1",
+  "mcp>=1.9,<2",
+  "pillow>=10",
+  "pydantic>=2",
+  "python-multipart>=0.0.9",
+  "pyyaml>=6",
+  "tinytuya>=1.15",
+  "uvicorn>=0.32",
+]
+
+[project.optional-dependencies]
+dev = ["pytest>=8", "httpx>=0.27", "ruff>=0.8"]
+
+[project.scripts]
+fermentd-control = "fermentd.control.service:main"
+fermentd-web = "fermentd.web.app:main"
+fermentd-ctl = "fermentd.cli:main"
+fermentd-demo = "fermentd.demo:main"
+fermentd-mcp = "fermentd.mcp.server:main"
+
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.setuptools.package-data]
+fermentd = ["profiles/builtin/*.yaml", "web/templates/*.html", "web/static/*", "db/migrations/*.sql", "profiles/categories.yaml"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["."]
+
+[tool.ruff]
+line-length = 120
+target-version = "py311"
+src = ["src", "tests"]
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP"]

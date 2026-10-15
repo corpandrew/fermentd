@@ -1,0 +1,68 @@
+id: kombucha_berry
+name: Kombucha, berry
+extends: null
+status: supported
+requires_capability:
+- heat
+tracking_mode: timer
+category: kombucha
+vessel_types:
+- jar
+recipe: docs/recipes/kombucha_berry.md
+default_stage: f1
+temperature:
+  default_target_f: 75
+  recommended_f:
+  - 72
+  - 75
+  allowed_target_f:
+  - 70
+  - 75
+  default_hysteresis_f: 1.0
+done_rule:
+  type: timer
+stages:
+- id: f1
+  core: primary
+  tracking: timer
+- id: bottle
+  core: packaging
+- id: in_bottle
+  core: conditioning
+  tracking: timer
+- id: refrigerated
+  core: done
+reminders:
+- id: taste
+  at: stage:f1+7d
+  repeat: 1d
+  text: Taste a little from under the SCOBY with a clean straw. Bottle when it is pleasantly tart, not sweet and not vinegary.
+- id: squeeze
+  at: stage:in_bottle+48h
+  repeat: 12h
+  text: Squeeze the plastic tester bottle. Move every bottle to the fridge when it is firm to rock hard.
+- id: refrigerate_now
+  at: stage:in_bottle+72h
+  repeat: 12h
+  text: If the tester is hard, move all bottles to the fridge now. Do not leave flavored glass bottles warm.
+- id: finish
+  at: stage:refrigerated+14d
+  text: Drink the kombucha within the next couple of weeks; open over the sink.
+guidance:
+  headspace: Leave 1-2 inches of headspace in each bottle.
+  blowoff: The first ferment (F1) is an open ferment under a tight cloth, not an airlock.
+  sampling: Taste with a clean straw. Squeeze the plastic tester bottle; do not open glass to check pressure.
+  safety_glass: Flavored second ferments carbonate fast. Never leave the bottles warm once the plastic tester is hard.
+  safety_pitch: Add the culture only when the liquid is below 80 F.
+  note: 'Kombucha likes 75-80 F. fermentd holds 75 F (its maximum), so even a cold winter room is fine: first ferment takes about 7-10 days at 75 F.'
+alerts:
+  pressure_risk_margin_f: 3
+  warm_action_f: 79
+  over_target_margin_f: 3
+safety:
+  cutoff_f: 80
+carbonation:
+  default: sparkling
+  target_vol: 0
+  max_vol: 3.0
+  method: in_bottle

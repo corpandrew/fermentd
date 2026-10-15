@@ -1,0 +1,19 @@
+# Template: render with scripts/install-units.sh (fills in the user and checkout path).
+# Set FERMENTD_MCP_HOST (your Tailscale IP) and FERMENTD_DASHBOARD_URL in config/fermentd.env
+# (copy config/fermentd.example.env). Without it the server listens on 127.0.0.1 only.
+[Unit]
+Description=fermentd MCP server (bearer token)
+After=fermentd-control.service tailscaled.service
+Wants=tailscaled.service
+
+[Service]
+User=@USER@
+WorkingDirectory=@APP_DIR@
+Environment=FERMENTD_MCP_HOST=127.0.0.1 FERMENTD_MCP_PORT=8765
+EnvironmentFile=-@APP_DIR@/config/fermentd.env
+ExecStart=@APP_DIR@/.venv/bin/fermentd-mcp --http --host ${FERMENTD_MCP_HOST} --port ${FERMENTD_MCP_PORT} --db @APP_DIR@/data/fermentd.db --secrets @APP_DIR@/config/secrets.yaml
+Restart=always
+RestartSec=10
+
+[Install]
+WantedBy=multi-user.target

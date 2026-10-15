@@ -1,0 +1,11 @@
+# Template: render with scripts/install-units.sh (fills in the user and checkout path).
+[Unit]
+Description=fermentd nightly SQLite backup
+
+[Service]
+Type=oneshot
+User=@USER@
+Nice=10
+IOSchedulingClass=idle
+EnvironmentFile=-@APP_DIR@/config/fermentd.env
+ExecStart=@APP_DIR@/deploy/backup/fermentd-backup.sh

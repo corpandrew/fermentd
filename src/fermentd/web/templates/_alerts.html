@@ -1,0 +1,18 @@
+{% for alert in alerts if alert.status == 'open' or not alert.reminder %}
+<section class="alert" data-severity="{{ alert.severity }}">
+  <div class="alert-body">
+    <div class="meta">
+      <span class="badge {{ 'danger' if alert.severity == 'critical' else 'warn' if alert.severity in ['action', 'warning'] else 'plain' }}">{{ alert.severity_label }}</span>
+      <span>{{ alert.opened_label }}</span>
+    </div>
+    <p>{{ alert.text }}</p>
+  </div>
+  {% if alert.status == 'open' %}
+  <form method="post" action="/alerts/{{ alert.id }}/ack">
+    <input type="hidden" name="confirm" value="yes">
+    <input type="hidden" name="idempotency_key" value="ack-{{ alert.id }}-{{ token }}">
+    <button type="submit" class="secondary sm">Acknowledge</button>
+  </form>
+  {% endif %}
+</section>
+{% endfor %}

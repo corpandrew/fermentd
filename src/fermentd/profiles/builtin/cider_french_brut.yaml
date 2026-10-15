@@ -1,0 +1,89 @@
+id: cider_french_brut
+name: French-style brut cider
+extends: null
+status: supported
+requires_capability:
+- heat
+tracking_mode: timer
+category: cider
+vessel_types:
+- jug
+recipe: docs/recipes/cider_french_brut.md
+default_stage: primary
+temperature:
+  default_target_f: 62
+  recommended_f:
+  - 58
+  - 64
+  allowed_target_f:
+  - 56
+  - 68
+  default_hysteresis_f: 1.0
+done_rule:
+  type: timer
+stages:
+- id: primary
+  core: primary
+  tracking: timer
+- id: secondary
+  core: secondary
+  tracking: timer
+- id: aging
+  core: conditioning
+  optional: true
+- id: bottle
+  core: packaging
+- id: bottle_condition
+  core: conditioning
+  tracking: timer
+  target_f: 66
+- id: cellared
+  core: done
+reminders:
+- id: airlock
+  at: stage:primary+2d
+  text: Check that the airlock is bubbling and the cider smells fruity. A faint sulfur smell is normal in the first week.
+- id: gravity
+  at: stage:primary+14d
+  repeat: 3d
+  text: Take a hydrometer reading. Rack once it is 1.000 or lower and the same on 3 readings over 3 days.
+- id: rack
+  at: stage:primary+21d
+  text: If the gravity is stable at 1.000 or lower, rack off the sediment into the clean jug and fit the airlock.
+- id: clear_check
+  at: stage:secondary+14d
+  repeat: 7d
+  text: Check clarity and gravity. Bottle only when it is clear-ish and the gravity is unchanged for 3 days.
+- id: age_taste
+  at: stage:aging+30d
+  repeat: 30d
+  text: Taste a sample. Bottle when you like it; dry cider softens with a few months of aging.
+- id: tester
+  at: stage:bottle_condition+7d
+  repeat: 2d
+  text: Squeeze the plastic tester bottle. Bottle conditioning is done when it is rock hard.
+- id: condition_done
+  at: stage:bottle_condition+14d
+  repeat: 3d
+  text: If the tester is rock hard, move the bottles to cool storage or the fridge. Do not leave glass warm once carbonated.
+- id: cellar
+  at: stage:cellared+30d
+  text: The cider keeps improving for a few months in a cool, dark place. Chill before opening.
+guidance:
+  headspace: Fill the jug to the shoulder in primary and secondary. Leave about 1 inch of headspace in bottles.
+  blowoff: Use the airlock from day 0. In a full 1-gallon jug, early foam can reach the airlock; wipe and re-sanitize it if it does.
+  sampling: Pull samples with a sanitized wine thief or the auto-siphon. Do not open glass bottles to check carbonation; squeeze the plastic tester.
+  safety_glass: Prime only cider that is fully fermented, with the same gravity (1.000 or lower) on 3 readings over 3 days. Priming unfinished cider can burst glass bottles.
+  safety_pitch: Pitch at room temperature, below 75 F. Never pitch into warm juice.
+  note: The heat-only rig cannot cool. It holds a floor of about 62 F; put the cooler in the coolest spot you have.
+alerts:
+  pressure_risk_margin_f: 6
+  warm_action_f: 70
+  over_target_margin_f: 3
+safety:
+  cutoff_f: 75
+carbonation:
+  default: sparkling
+  target_vol: 2.7
+  max_vol: 3.0
+  method: priming

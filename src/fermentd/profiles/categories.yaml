@@ -1,0 +1,55 @@
+# Guide layout per beverage category. Each recipe declares `category:` in its frontmatter.
+# `sections` are the level-2 headings in process order; `required` must be present, others are
+# optional and simply omitted when a recipe does not need them. `tiles` are the summary metrics.
+soda:
+  label: Bottle-carbonated soda
+  sections: [Ingredients, Equipment, Sanitation, Mix and bottle, "Steep, mix and bottle", Carbonation check, Fridge and serving, Safety, Troubleshooting, Taste, Related styles]
+  required: [Ingredients, Equipment, Carbonation check, Fridge and serving, Safety, Taste]
+  tiles: [makes, bottles, carbonate, pitch_below, alcohol]
+lager:
+  label: Lager (extract brew)
+  hop_table: true
+  sections: [Ingredients, Equipment, Sanitation, Brew day, Ferment, Diacetyl rest, Lager (off the rig), Bottle, Condition in the bottle, Serve, Safety, Troubleshooting, Taste, Related styles]
+  required: [Ingredients, Equipment, Brew day, Ferment, Diacetyl rest, Lager (off the rig), Bottle, Condition in the bottle, Safety, Taste]
+  tiles: [makes, bottles, og_abv, ibu, ferment, condition]
+ale:
+  label: Ale (extract brew)
+  hop_table: true
+  sections: [Ingredients, Equipment, Sanitation, Brew day, Ferment, Dry hop, Bottle, Condition in the bottle, Safety, Troubleshooting, Taste, Related styles]
+  required: [Ingredients, Equipment, Brew day, Ferment, Bottle, Condition in the bottle, Safety, Taste]
+  tiles: [makes, bottles, og_abv, ibu, ferment, condition]
+cider:
+  label: Cider
+  sections: [Ingredients, Equipment, Sanitation, Juice prep and pitch, Primary, Rack and clear, Dry hop, Age (optional), Bottle, Condition in the bottle, Serve, "Keeving (advanced, optional)", Safety, Troubleshooting, Taste, Related styles]
+  required: [Ingredients, Equipment, Juice prep and pitch, Primary, Rack and clear, Bottle, Safety, Taste]
+  tiles: [makes, bottles, og_abv, ferment, condition, pitch_below]
+keeved_cider:
+  label: Keeved cider (naturally sweet, naturally sparkling)
+  sections: [Ingredients, Equipment, Sanitation, "Keeve: enzyme and calcium", Rack off the chapeau brun, Slow ferment, Bottle while sweet, Natural sparkle and stopping it, Serve, Safety, Troubleshooting, Taste, Related styles]
+  required: [Ingredients, Equipment, "Keeve: enzyme and calcium", Rack off the chapeau brun, Slow ferment, Bottle while sweet, Natural sparkle and stopping it, Safety, Taste]
+  tiles: [makes, bottles, og_abv, ferment, bottle_at]
+wine:
+  label: Wine
+  sections: [Ingredients, Equipment, Sanitation, Fruit maceration and must prep, Juice prep and pitch, On fruit, Primary, Rack and finish dry, "Rack, clear and age", Backsweeten (optional) and bottle, Safety, Troubleshooting, Taste, Related styles]
+  required: [Ingredients, Equipment, Rack and finish dry, "Rack, clear and age", Backsweeten (optional) and bottle, Safety, Taste]
+  tiles: [makes, bottles, og_abv, ferment, aging, still]
+ginger_beer:
+  label: Fermented ginger beer
+  sections: [Ingredients, Equipment, Sanitation, Brew day, Ferment, Bottle, Condition in the bottle, Safety, Troubleshooting, Taste, Related styles]
+  required: [Ingredients, Equipment, Brew day, Ferment, Bottle, Condition in the bottle, Safety, Taste]
+  tiles: [makes, bottles, og_abv, ferment, condition]
+kombucha:
+  label: Kombucha
+  sections: [Ingredients, Equipment, Sanitation, Brew the sweet-tea base, First ferment (F1), "Second ferment (F2): flavor and bottle", Carbonation check and refrigerate, SCOBY care, Safety, Troubleshooting, Taste, Related styles]
+  required: [Ingredients, Equipment, Brew the sweet-tea base, First ferment (F1), "Second ferment (F2): flavor and bottle", Carbonation check and refrigerate, SCOBY care, Safety, Taste]
+  tiles: [makes, bottles, f1, carbonate, ph]
+water_kefir:
+  label: Water kefir
+  sections: [Ingredients, Equipment, Sanitation, Brew the sugar-water base, First ferment (F1), "Second ferment (F2): flavor and bottle", Carbonation check and refrigerate, Grain care, Safety, Troubleshooting, Taste, Related styles]
+  required: [Ingredients, Equipment, Brew the sugar-water base, First ferment (F1), "Second ferment (F2): flavor and bottle", Carbonation check and refrigerate, Grain care, Safety, Taste]
+  tiles: [makes, bottles, f1, carbonate, alcohol]
+sparkling_wine:
+  label: Sparkling wine (méthode classique)
+  sections: [Ingredients, Equipment, Sanitation, Juice prep and pitch, Primary (still base wine), Rack and finish dry, Cold stabilize, Tirage, En tirage aging, Riddling, Disgorge, Dosage and closure, Serve, Safety, Troubleshooting, Taste, Related styles]
+  required: [Ingredients, Equipment, Juice prep and pitch, Primary (still base wine), Rack and finish dry, Cold stabilize, Tirage, En tirage aging, Riddling, Disgorge, Dosage and closure, Safety, Taste]
+  tiles: [makes, bottles, og_abv, ferment, tirage, en_tirage, dosage]

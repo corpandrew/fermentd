@@ -1,0 +1,15 @@
+# Template: render with scripts/install-units.sh (fills in the user and checkout path).
+# Bind address, login and allowed origins live in config/fermentd.yaml (web:) and secrets.yaml.
+[Unit]
+Description=fermentd dashboard
+After=fermentd-control.service
+
+[Service]
+User=@USER@
+WorkingDirectory=@APP_DIR@
+ExecStart=@APP_DIR@/.venv/bin/fermentd-web --config @APP_DIR@/config/fermentd.yaml
+Restart=always
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target

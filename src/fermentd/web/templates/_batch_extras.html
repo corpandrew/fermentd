@@ -1,0 +1,95 @@
+{% if extras %}
+{% set r = extras.recipe %}
+<section class="card" id="recipe" data-recipe-tweaks>
+  <p class="section-title">Your recipe for this batch</p>
+  {% if r.variant %}<p class="muted small">Started from your saved version <strong>{{ r.variant.name }}</strong>.</p>{% endif %}
+  {% if r.ingredients %}
+  <table class="tweaks">
+    <thead><tr><th>Ingredient</th><th>Recipe says</th><th>You used</th><th></th></tr></thead>
+    <tbody>
+    {% for row in r.ingredients %}
+      <tr class="tw-{{ row.state }}">
+        <td>{{ row.item }}{% if row.note %}<span class="muted small"> · {{ row.note }}</span>{% endif %}</td>
+        <td>{% if row.state in ['changed', 'removed'] %}<s>{{ row.recipe }}</s>{% else %}{{ row.recipe }}{% endif %}</td>
+        <td>{% if row.state == 'same' %}<span class="muted">same</span>{% else %}<strong>{{ row.mine }}</strong>
+          <span class="tw-tag">{{ {'changed': 'changed', 'added': 'added', 'removed': 'left out'}[row.state] }}</span>{% endif %}</td>
+        <td>{% if row.tweak_id %}
+          <form method="post" action="/batches/{{ extras.batch_id }}/tweaks/{{ row.tweak_id }}/remove" class="inline">
+            <input type="hidden" name="confirm" value="yes"><input type="hidden" name="idempotency_key" value="rt-{{ row.tweak_id }}-{{ token }}">
+            <button type="submit" class="link small" title="Undo this change">undo</button>
+          </form>{% endif %}</td>
+      </tr>
+    {% endfor %}
+    </tbody>
+  </table>
+  {% else %}
+  <p class="muted small">This profile has no ingredient list, so only added ingredients and notes show here.</p>
+  {% endif %}
+  {% if r.notes %}
+  <p class="section-title" style="margin-top: 0.8rem">How you made it</p>
+  <ul class="tw-notes">{% for n in r.notes %}<li>{{ n.text }}
+    <form method="post" action="/batches/{{ extras.batch_id }}/tweaks/{{ n.tweak_id }}/remove" class="inline">
+      <input type="hidden" name="confirm" value="yes"><input type="hidden" name="idempotency_key" value="rn-{{ n.tweak_id }}-{{ token }}">
+      <button type="submit" class="link small">remove</button></form></li>{% endfor %}</ul>
+  {% endif %}
+  <details class="tw-add">
+    <summary>Note a change</summary>
+    <form method="post" action="/batches/{{ extras.batch_id }}/tweaks" class="start">
+      <label class="field"><span>What did you do?</span>
+        <select name="kind">
+          <option value="change">Used a different amount</option>
+          <option value="add">Added something</option>
+          <option value="remove">Left something out</option>
+          <option value="note">Did a step differently</option>
+        </select></label>
+      <label class="field"><span>Ingredient</span>
+        <select name="ingredient_id"><option value="">(new or none)</option>
+          {% for row in r.ingredients if row.id %}<option value="{{ row.id }}">{{ row.item }}</option>{% endfor %}</select></label>
+      <label class="field"><span>New ingredient name (if added)</span><input name="item" placeholder="e.g. lime zest"></label>
+      <label class="field"><span>Amount you used</span><input name="to_amount" placeholder="e.g. 4 oz"></label>
+      <label class="field"><span>Note</span><input name="note" placeholder="e.g. steeped the ginger 20 min"></label>
+      <input type="hidden" name="confirm" value="yes"><input type="hidden" name="idempotency_key" value="tw-{{ extras.batch_id }}-{{ token }}">
+      <button type="submit" class="secondary">Save change</button>
+    </form>
+  </details>
+  {% if r.change_count %}
+  <form method="post" action="/batches/{{ extras.batch_id }}/variant" class="start" style="margin-top: 0.6rem">
+    <label class="field"><span>Like it? Save these changes as your own version</span><input name="name" placeholder="e.g. Spicy ginger ale"></label>
+    <input type="hidden" name="confirm" value="yes"><input type="hidden" name="idempotency_key" value="var-{{ extras.batch_id }}-{{ token }}">
+    <button type="submit" class="secondary">Save my version</button>
+  </form>
+  {% endif %}
+</section>
+
+<section class="card" id="tasting" data-tasting-log>
+  <p class="section-title">Tasting notes{% if extras.avg %} · <span class="stars" title="average {{ extras.avg }}">{{ extras.avg_stars }}</span> <span class="muted small">{{ extras.avg }} average</span>{% endif %}</p>
+  {% for t in extras.tastings %}
+  <article class="tasting">
+    <p><span class="stars">{{ t.stars }}</span> <span class="muted small">{{ t.date }}</span>
+      {% if t.make_again == 1 %}<span class="badge plain">Would make again</span>{% elif t.make_again == 0 %}<span class="badge plain">Would not make again</span>{% endif %}</p>
+    {% if t.scores %}<ul class="scores">{% for s in t.scores %}<li>{{ s.label }} <meter min="1" max="5" value="{{ s.value }}"></meter> <span class="muted small">{{ s.value }}/5</span></li>{% endfor %}</ul>{% endif %}
+    {% if t.notes %}<p>{{ t.notes }}</p>{% endif %}
+  </article>
+  {% else %}
+  <p class="muted small">No tastings yet. Open a bottle and write down what you think.</p>
+  {% endfor %}
+  <details class="tw-add"{% if not extras.tastings %} open{% endif %}>
+    <summary>Add a tasting</summary>
+    <form method="post" action="/batches/{{ extras.batch_id }}/tastings" class="start">
+      <label class="field"><span>Date</span><input type="date" name="tasted_at" value="{{ extras.today }}"></label>
+      <label class="field"><span>Overall (1-5 stars)</span>
+        <select name="rating">{% for n in [5,4,3,2,1] %}<option value="{{ n }}"{% if n == 4 %} selected{% endif %}>{{ '★' * n }}</option>{% endfor %}</select></label>
+      {% for sl in extras.sliders %}
+      <label class="field"><span>{{ sl.label }} <span class="muted small">({{ sl.low }} → {{ sl.high }})</span></span>
+        <input type="range" name="{{ sl.key }}" min="1" max="5" step="1" value="3"></label>
+      {% endfor %}
+      <label class="field"><span>Notes</span><input name="notes" placeholder="What did you like or not?"></label>
+      <label class="field"><span>Would you make it again?</span>
+        <select name="make_again"><option value="">Not sure</option><option value="yes">Yes</option><option value="no">No</option></select></label>
+      <input type="hidden" name="confirm" value="yes"><input type="hidden" name="idempotency_key" value="ta-{{ extras.batch_id }}-{{ token }}">
+      <button type="submit" class="secondary">Save tasting</button>
+    </form>
+  </details>
+  <p class="muted small"><a href="/tastings">See all your batches ranked by rating</a></p>
+</section>
+{% endif %}

@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#0c0b0a">
+  <title>{% block title %}fermentd{% endblock %}</title>
+  <link rel="icon" type="image/svg+xml" href="/static/logo.svg">
+  <link rel="icon" type="image/png" sizes="32x32" href="/static/favicon-32x32.png">
+  <link rel="apple-touch-icon" href="/static/apple-touch-icon.png">
+  <link rel="stylesheet" href="/static/dashboard.css">
+  <script src="/static/dashboard.js" defer></script>
+</head>
+<body>
+  {% set path = request.url.path %}
+  <a class="skip" href="#content">Skip to content</a>
+  <header class="top">
+    <div class="top-inner">
+      <a class="brand" href="/"><img class="brand-logo" src="/static/logo.svg" alt="" width="36" height="36">fermentd</a>
+      <nav class="nav" aria-label="Main">
+        <a href="/"{% if path == '/' or (path.startswith('/vessels/') ) %} aria-current="page"{% endif %}>Overview</a>
+        <a href="/history"{% if path.startswith('/history') %} aria-current="page"{% endif %}>History</a>
+        <a href="/tastings"{% if path.startswith('/tastings') %} aria-current="page"{% endif %}>Tastings</a>
+        <a href="/vessels"{% if path == '/vessels' %} aria-current="page"{% endif %}>Vessels</a>
+        <a href="/profiles"{% if path.startswith('/profiles') %} aria-current="page"{% endif %}>Profiles</a>
+      </nav>
+      {% if auth_enabled(request) %}
+        {% if logged_in(request) %}
+        <form method="post" action="/logout" class="auth-link"><button type="submit" class="ghost sm">Log out</button></form>
+        {% elif path != '/login' %}
+        <a class="auth-link button ghost sm" href="/login?next={{ path | urlencode }}">Log in</a>
+        {% endif %}
+      {% endif %}
+      <p class="asof" data-bind="asof">{% if as_of_label %}Last reading {{ as_of_label }}{% else %}No readings yet{% endif %}</p>
+    </div>
+  </header>
+  <main id="content">
+    {% if error %}<p class="banner critical" role="alert">{{ error }}</p>{% endif %}
+    {% set notice = request.query_params.get('notice') %}
+    {% set pending = request.query_params.get('pending') %}
+    {% if notice and not error %}<p class="banner notice" role="status" data-pending="{{ pending or '' }}">{{ notice }}</p>{% endif %}
+    {% block body %}{% endblock %}
+  </main>
+  <dialog id="confirm-dialog" aria-labelledby="confirm-title">
+    <form method="dialog">
+      <h3 id="confirm-title">Are you sure?</h3>
+      <p id="confirm-text"></p>
+      <div class="dialog-actions">
+        <button value="cancel" class="secondary" autofocus>Cancel</button>
+        <button value="ok" id="confirm-ok">Confirm</button>
+      </div>
+    </form>
+  </dialog>
+</body>
+</html>
