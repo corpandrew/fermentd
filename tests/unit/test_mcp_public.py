@@ -48,11 +48,15 @@ def _authorize(client, challenge, password=PASSWORD, redirect=REDIRECT, state="s
     page = client.get("/authorize", params=params)
     assert page.status_code == 200 and "read-only" in page.text
     assert page.headers["x-frame-options"] == "DENY"
-    origin = "https://" + urlsplit(redirect).netloc
-    assert f"form-action 'self' {origin};" in page.headers["content-security-policy"]
     txn = page.text.split('name="txn" value="')[1].split('"')[0]
-    return client.post("/authorize", data={"txn": txn.replace("&quot;", '"'), "password": password,
-                                           "action": "allow"}, follow_redirects=False)
+    r = client.post("/authorize", data={"txn": txn.replace("&quot;", '"'), "password": password,
+                                        "action": "allow"}, follow_redirects=False)
+    if r.status_code == 200 and 'id="continue"' in r.text:  # consent result navigates via a page
+        import html as _h
+        url = _h.unescape(r.text.split('id="continue" href="')[1].split('"')[0])
+        assert f'content="0;url={r.text.split(chr(34) + "0;url=")[1].split(chr(34))[0]}"' in r.text
+        r.status_code, r.headers["location"] = 303, url
+    return r
 
 
 def _code_flow(client):

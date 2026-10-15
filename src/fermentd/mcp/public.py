@@ -316,12 +316,22 @@ def create_public_app(settings: PublicSettings, store: OAuthStore, mcp_app,
             return None
         return data["p"] if data.get("exp", 0) >= time.time() else None
 
-    def back_to_client(p: dict, **query) -> RedirectResponse:
+    def back_to_client(p: dict, via_page: bool = False, **query) -> Response:
         if p.get("state"):
             query["state"] = p["state"]
         query["iss"] = settings.issuer
         sep = "&" if "?" in p["redirect_uri"] else "?"
-        return RedirectResponse(p["redirect_uri"] + sep + urlencode(query), status_code=303, headers=NO_STORE)
+        url = p["redirect_uri"] + sep + urlencode(query)
+        if not via_page:
+            return RedirectResponse(url, status_code=303, headers=NO_STORE)
+        # After the consent form POST, a 303 to the client is subject to CSP form-action across the
+        # whole redirect chain (Google's callback redirects on to other Google origins), which
+        # browsers block silently. Navigate with a page instead; redirect_uri is already validated.
+        u = html.escape(url, quote=True)
+        doc = (f'<!doctype html><html><head><meta charset="utf-8"><meta http-equiv="refresh" content="0;url={u}">'
+               f'<title>Returning to the app</title></head><body><p>Access allowed. '
+               f'<a id="continue" href="{u}">Continue to the app</a>.</p></body></html>')
+        return HTMLResponse(doc, headers=PAGE_HEADERS)
 
     def known_client(client_id: str | None):
         """None if unknown, else (secret_hash or None, registered redirect URIs or None)."""
@@ -364,7 +374,7 @@ vessels, temperatures, batches, notes and alerts. It cannot start, end or change
 <label>Dashboard password<input type="password" name="password" autocomplete="current-password" autofocus></label>
 <button name="action" value="allow">Allow read-only access</button>
 <button name="action" value="deny">Deny</button></form>"""
-        return _page("Connect to fermentd", body, status, form_target=p["redirect_uri"])
+        return _page("Connect to fermentd", body, status)
 
     async def authorize(request: Request) -> Response:
         if request.method == "GET":
@@ -379,7 +389,7 @@ vessels, temperatures, batches, notes and alerts. It cannot start, end or change
         if err:
             return err
         if form.get("action") == "deny":
-            return back_to_client(p, error="access_denied")
+            return back_to_client(p, via_page=True, error="access_denied")
         ip = _client_ip(request)
         if throttle.blocked(ip) or global_throttle.blocked("all"):
             log.warning("login throttled for %s", ip)
@@ -392,7 +402,7 @@ vessels, temperatures, batches, notes and alerts. It cannot start, end or change
         throttle.clear(ip)
         code = store.new_code(p["client_id"], p["redirect_uri"], p.get("code_challenge") or None, SCOPE)
         log.info("authorized client %s for %s", p["client_id"], p["redirect_uri"])
-        return back_to_client(p, code=code)
+        return back_to_client(p, via_page=True, code=code)
 
     async def token(request: Request) -> Response:
         form = await request.form()
